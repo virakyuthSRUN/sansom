@@ -93,7 +93,7 @@ const TrackerPage = () => {
               </p>
               {e.cat === 'BNPL' && (
                 <p className="text-[9px] text-destructive font-semibold flex items-center gap-0.5 justify-end">
-                  DEBT <AlertTriangleIcon />
+                  DEBT <AlertTriangle className="w-3 h-3" />
                 </p>
               )}
             </div>
@@ -102,11 +102,6 @@ const TrackerPage = () => {
       </div>
     </div>
   );
-};
-
-const AlertTriangleIcon = () => {
-  const { AlertTriangle } = require('lucide-react');
-  return <AlertTriangle className="w-3 h-3 inline" />;
 };
 
 export default TrackerPage;
