@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Sparkles, Send } from 'lucide-react';
 
 const RESPONSES: Record<string, string> = {
   default: "Based on your profile, I'd suggest reviewing your Shopee spending — it's up 34% this month. Want a detailed breakdown?",
@@ -49,7 +50,9 @@ const ChatPage = () => {
       {/* Header */}
       <div className="pb-3 border-b border-border mb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center text-lg">✨</div>
+          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-primary-foreground" />
+          </div>
           <div>
             <p className="text-[15px] font-bold text-foreground">FINA AI Advisor</p>
             <p className="text-[11px] text-primary font-medium">● Online · Powered by AI</p>
@@ -62,7 +65,9 @@ const ChatPage = () => {
         {msgs.map((m, i) => (
           <div key={i} className={`flex animate-slide-up ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {m.role === 'ai' && (
-              <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center text-[13px] mr-1.5 flex-shrink-0 self-end">✨</div>
+              <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center mr-1.5 flex-shrink-0 self-end">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+              </div>
             )}
             <div
               className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-line ${
@@ -77,7 +82,9 @@ const ChatPage = () => {
         ))}
         {typing && (
           <div className="flex items-center gap-1.5">
-            <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center text-[13px]">✨</div>
+            <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
             <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1">
               {[0, 1, 2].map(i => (
                 <div key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" style={{ animation: `pulse-dot 1s ${i * 0.2}s infinite` }} />
@@ -113,7 +120,7 @@ const ChatPage = () => {
             onClick={() => send(input)}
             className="gradient-primary text-primary-foreground rounded-xl px-4 py-3 font-semibold text-sm shadow-primary hover:shadow-primary-hover transition-all flex-shrink-0"
           >
-            →
+            <Send className="w-4 h-4" />
           </button>
         </div>
       </div>

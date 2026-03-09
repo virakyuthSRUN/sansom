@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import RingChart from './RingChart';
+import { Calculator, CheckCircle, AlertTriangle, AlertOctagon } from 'lucide-react';
 
 const BNPLS = [
   { name: 'Atome', platform: 'Shopee', amount: 300, monthly: 100, rate: 18, status: 'Active', risk: 'MEDIUM' as const },
@@ -9,6 +10,12 @@ const BNPLS = [
 const getColor = (s: number) => s <= 30 ? '#00c896' : s <= 60 ? '#ffb300' : '#ff4757';
 const getLabel = (s: number) => s <= 30 ? 'LOW RISK' : s <= 60 ? 'MEDIUM RISK' : 'HIGH RISK';
 const getBg = (s: number) => s <= 30 ? 'hsl(var(--success-light))' : s <= 60 ? 'hsl(var(--warning-light))' : 'hsl(0 72% 96%)';
+
+const RiskIcon = ({ score }: { score: number }) => {
+  if (score <= 30) return <CheckCircle className="w-4 h-4 inline mr-1" />;
+  if (score <= 60) return <AlertTriangle className="w-4 h-4 inline mr-1" />;
+  return <AlertOctagon className="w-4 h-4 inline mr-1" />;
+};
 
 const DebtPage = () => {
   const score = 52;
@@ -29,11 +36,11 @@ const DebtPage = () => {
 
       {/* Main Score */}
       <div
-        className="bg-card rounded-2xl p-6 flex items-center gap-5 border-2"
+        className="bg-card rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-5 border-2"
         style={{ background: getBg(score), borderColor: `${getColor(score)}30` }}
       >
         <RingChart pct={score} size={96} color={getColor(score)} bg="#e8e8e8" stroke={9} label={`${score}`} sub="/ 100" />
-        <div className="flex-1">
+        <div className="flex-1 text-center sm:text-left">
           <p className="text-[11px] text-muted-foreground font-semibold mb-1">YOUR DEBT RISK SCORE</p>
           <p className="text-[22px] font-extrabold font-display" style={{ color: getColor(score) }}>{getLabel(score)}</p>
           <p className="text-xs text-foreground leading-relaxed mt-1.5">
@@ -76,7 +83,9 @@ const DebtPage = () => {
 
       {/* Simulator */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
-        <p className="text-[13px] font-bold text-foreground mb-1">🧮 Risk Simulator</p>
+        <p className="text-[13px] font-bold text-foreground mb-1 flex items-center gap-1.5">
+          <Calculator className="w-4 h-4 text-muted-foreground" /> Risk Simulator
+        </p>
         <p className="text-[11px] text-muted-foreground mb-3.5">Enter your details to get a personalised risk score</p>
         <div className="grid grid-cols-2 gap-2.5 mb-3.5">
           {[
@@ -107,9 +116,10 @@ const DebtPage = () => {
             <p className="text-[11px] text-muted-foreground font-semibold mb-1">YOUR SIMULATED SCORE</p>
             <p className="text-2xl font-extrabold" style={{ color: getColor(simScore) }}>{simScore}/100 — {getLabel(simScore)}</p>
             <p className="text-xs text-foreground mt-1.5 leading-relaxed">
-              {simScore <= 30 ? "✅ Great job! You're managing debt responsibly."
-                : simScore <= 60 ? "⚠️ Be careful. Try to reduce BNPL spending this month."
-                : "🚨 High risk! Stop all new BNPL immediately and focus on paying off existing debt."}
+              <RiskIcon score={simScore} />
+              {simScore <= 30 ? "Great job! You're managing debt responsibly."
+                : simScore <= 60 ? "Be careful. Try to reduce BNPL spending this month."
+                : "High risk! Stop all new BNPL immediately and focus on paying off existing debt."}
             </p>
           </div>
         )}
