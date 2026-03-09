@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { EXPENSES } from '@/lib/constants';
 import DynamicIcon from './DynamicIcon';
-import { Bot } from 'lucide-react';
+import { Bot, AlertTriangle } from 'lucide-react';
 
 const CAT_SPEND = [
   { cat: 'Shopping', amt: 89.9, color: '#f97316', pct: 28 },
