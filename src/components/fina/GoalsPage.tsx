@@ -1,5 +1,7 @@
 import { GOALS } from '@/lib/constants';
 import RingChart from './RingChart';
+import DynamicIcon from './DynamicIcon';
+import { Sparkles, Plus, Check } from 'lucide-react';
 
 const GoalsPage = () => {
   return (
@@ -8,7 +10,9 @@ const GoalsPage = () => {
 
       {/* AI Plan Banner */}
       <div className="gradient-primary rounded-2xl p-4 text-primary-foreground">
-        <p className="text-[11px] font-bold opacity-80 mb-1.5">✨ AI SAVINGS PLAN</p>
+        <p className="text-[11px] font-bold opacity-80 mb-1.5 flex items-center gap-1">
+          <Sparkles className="w-3.5 h-3.5" /> AI SAVINGS PLAN
+        </p>
         <p className="text-[13px] leading-relaxed">
           Save <b>RM 200/month</b> across your 3 goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
         </p>
@@ -20,11 +24,11 @@ const GoalsPage = () => {
         const remaining = g.target - g.saved;
         const months = Math.ceil(remaining / 200);
         return (
-          <div key={g.id} className="bg-card rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div key={g.id} className="bg-card rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-3.5">
               <div className="flex items-center gap-3">
-                <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-[22px]" style={{ background: `${g.color}18` }}>
-                  {g.icon}
+                <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center" style={{ background: `${g.color}18` }}>
+                  <DynamicIcon name={g.icon} className="w-6 h-6" style={{ color: g.color }} />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-foreground">{g.name}</p>
@@ -45,8 +49,8 @@ const GoalsPage = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">RM {remaining.toLocaleString()} left · ~{months} months</span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${g.color}18`, color: g.color }}>
-                On Track ✓
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5" style={{ background: `${g.color}18`, color: g.color }}>
+                On Track <Check className="w-3 h-3" />
               </span>
             </div>
           </div>
@@ -55,7 +59,9 @@ const GoalsPage = () => {
 
       {/* Add Goal */}
       <div className="border-2 border-dashed border-border rounded-2xl p-5 flex items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors">
-        <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-primary text-lg font-bold">+</div>
+        <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+          <Plus className="w-4 h-4 text-primary" />
+        </div>
         <p className="text-[13px] font-semibold text-muted-foreground">Add a new savings goal</p>
       </div>
     </div>

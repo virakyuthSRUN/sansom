@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { EXPENSES } from '@/lib/constants';
+import DynamicIcon from './DynamicIcon';
+import { Bot, AlertTriangle } from 'lucide-react';
 
 const CAT_SPEND = [
   { cat: 'Shopping', amt: 89.9, color: '#f97316', pct: 28 },
@@ -21,7 +23,9 @@ const TrackerPage = () => {
 
       {/* AI Prediction */}
       <div className="rounded-2xl p-4 border-[1.5px] border-info/30" style={{ background: 'linear-gradient(135deg, hsl(217 100% 96%), hsl(162 80% 97%))' }}>
-        <p className="text-[11px] text-info font-bold mb-1.5">🤖 AI PREDICTION</p>
+        <p className="text-[11px] text-info font-bold mb-1.5 flex items-center gap-1">
+          <Bot className="w-3.5 h-3.5" /> AI PREDICTION
+        </p>
         <p className="text-[13px] text-foreground leading-relaxed">
           At your current pace you'll spend <span className="font-bold text-destructive">RM 920</span> this month — <span className="font-bold">RM 20 over budget</span>. Cut 1 food delivery to stay safe.
         </p>
@@ -72,7 +76,9 @@ const TrackerPage = () => {
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: `${e.color}18` }}>{e.icon}</div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${e.color}18` }}>
+                <DynamicIcon name={e.icon} className="w-5 h-5" style={{ color: e.color }} />
+              </div>
               <div>
                 <p className="text-[13px] font-semibold text-foreground">{e.name}</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -85,7 +91,11 @@ const TrackerPage = () => {
               <p className="text-sm font-bold" style={{ color: e.cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
                 −RM {e.amount.toFixed(2)}
               </p>
-              {e.cat === 'BNPL' && <p className="text-[9px] text-destructive font-semibold">DEBT ⚠️</p>}
+              {e.cat === 'BNPL' && (
+                <p className="text-[9px] text-destructive font-semibold flex items-center gap-0.5 justify-end">
+                  DEBT <AlertTriangle className="w-3 h-3" />
+                </p>
+              )}
             </div>
           </div>
         ))}
