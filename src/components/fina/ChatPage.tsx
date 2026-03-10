@@ -18,9 +18,9 @@ interface Msg {
 
 const ChatPage = () => {
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'ai', text: "Hi! I'm FINA, your AI financial advisor 💚 I can help you budget, track spending, or check if you can afford something. What's on your mind?" },
+    { role: 'ai', text: "Hi! I'm FINA, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?" },
     { role: 'user', text: "Can I afford to buy AirPods this month? They cost RM 899." },
-    { role: 'ai', text: "Based on your current spending, you've used RM 620 of your RM 900 budget — leaving RM 280 free.\n\nRM 899 is RM 619 over your remaining budget. ❌ I'd recommend against it this month.\n\n💡 If you save RM 200/month, you can get them in 4.5 months without debt. Want me to set up a savings goal?" },
+    { role: 'ai', text: "Based on your current spending, you've used RM 620 of your RM 900 budget — leaving RM 280 free.\n\nRM 899 is RM 619 over your remaining budget. I'd recommend against it this month.\n\nTip: If you save RM 200/month, you can get them in 4.5 months without debt. Want me to set up a savings goal?" },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);

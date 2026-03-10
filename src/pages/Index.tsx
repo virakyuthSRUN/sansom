@@ -5,8 +5,9 @@ import ChatPage from '@/components/fina/ChatPage';
 import TrackerPage from '@/components/fina/TrackerPage';
 import DebtPage from '@/components/fina/DebtPage';
 import GoalsPage from '@/components/fina/GoalsPage';
+import SettingsPage from '@/components/fina/SettingsPage';
 import DynamicIcon from '@/components/fina/DynamicIcon';
-import { Heart, Sparkles, BarChart3, AlertTriangle, Target } from 'lucide-react';
+import { Heart, Sparkles, BarChart3, AlertTriangle, Target, Settings } from 'lucide-react';
 
 const PAGE_TITLES: Record<PageId, string> = {
   home: 'FINA',
@@ -14,6 +15,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   tracker: 'Tracker',
   debt: 'Debt Risk',
   goals: 'Goals',
+  settings: 'Settings',
 };
 
 const PAGE_HEADER_ICONS: Record<PageId, React.ReactNode> = {
@@ -22,6 +24,7 @@ const PAGE_HEADER_ICONS: Record<PageId, React.ReactNode> = {
   tracker: <BarChart3 className="w-5 h-5 text-primary-foreground" />,
   debt: <AlertTriangle className="w-5 h-5 text-primary-foreground" />,
   goals: <Target className="w-5 h-5 text-primary-foreground" />,
+  settings: <Settings className="w-5 h-5 text-primary-foreground" />,
 };
 
 const Index = () => {
@@ -45,16 +48,17 @@ const Index = () => {
           {page === 'tracker' && <TrackerPage />}
           {page === 'debt' && <DebtPage />}
           {page === 'goals' && <GoalsPage />}
+          {page === 'settings' && <SettingsPage />}
         </div>
 
         {/* Bottom Nav */}
-        <div className="bg-card/80 backdrop-blur-sm border-t border-border px-2 pt-2 pb-safe flex justify-around flex-shrink-0 sticky bottom-0 z-10"
+        <div className="bg-card/80 backdrop-blur-sm border-t border-border px-1 pt-2 pb-safe flex justify-around flex-shrink-0 sticky bottom-0 z-10"
           style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}>
           {NAV_ITEMS.map(n => (
             <button
               key={n.id}
               onClick={() => setPage(n.id)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-colors ${
+              className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-colors ${
                 page === n.id ? 'bg-accent' : 'hover:bg-accent/50'
               }`}
             >
