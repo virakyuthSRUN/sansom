@@ -63,7 +63,7 @@ const Dashboard = ({ setPage }: DashboardProps) => {
       <div
         className="bg-card rounded-2xl p-4 border-[1.5px] border-warning/30 cursor-pointer shadow-sm hover:shadow-md transition-all"
         style={{ background: 'linear-gradient(135deg, hsl(38 100% 97%), hsl(0 0% 100%))' }}
-        onClick={() => setPage('debt')}
+        onClick={() => setPage('debtgoals')}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
