@@ -2,8 +2,11 @@ import { GOALS } from '@/lib/constants';
 import RingChart from './RingChart';
 import DynamicIcon from './DynamicIcon';
 import { Sparkles, Plus, Check } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const GoalsPage = () => {
+  const { format } = useCurrency();
+
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
       <h1 className="text-lg font-bold text-foreground font-display">Savings Goals</h1>
@@ -14,7 +17,7 @@ const GoalsPage = () => {
           <Sparkles className="w-3.5 h-3.5" /> AI SAVINGS PLAN
         </p>
         <p className="text-[13px] leading-relaxed">
-          Save <b>RM 200/month</b> across your 3 goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
+          Save <b>{format(200)}/month</b> across your 3 goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
         </p>
       </div>
 
@@ -38,8 +41,8 @@ const GoalsPage = () => {
               <RingChart pct={pct} size={56} color={g.color} stroke={6} label={`${pct}%`} />
             </div>
             <div className="flex justify-between mb-2">
-              <span className="text-xs text-muted-foreground">Saved: <b className="text-foreground">RM {g.saved.toLocaleString()}</b></span>
-              <span className="text-xs text-muted-foreground">Goal: <b className="text-foreground">RM {g.target.toLocaleString()}</b></span>
+              <span className="text-xs text-muted-foreground">Saved: <b className="text-foreground">{format(g.saved)}</b></span>
+              <span className="text-xs text-muted-foreground">Goal: <b className="text-foreground">{format(g.target)}</b></span>
             </div>
             <div className="h-2 bg-border rounded-full overflow-hidden mb-2.5">
               <div
@@ -48,7 +51,7 @@ const GoalsPage = () => {
               />
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[11px] text-muted-foreground">RM {remaining.toLocaleString()} left · ~{months} months</span>
+              <span className="text-[11px] text-muted-foreground">{format(remaining)} left · ~{months} months</span>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5" style={{ background: `${g.color}18`, color: g.color }}>
                 On Track <Check className="w-3 h-3" />
               </span>

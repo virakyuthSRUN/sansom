@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import RingChart from './RingChart';
 import { Calculator, CheckCircle, AlertTriangle, AlertOctagon } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const BNPLS = [
   { name: 'Atome', platform: 'Shopee', amount: 300, monthly: 100, rate: 18, status: 'Active', risk: 'MEDIUM' as const },
@@ -18,6 +19,7 @@ const RiskIcon = ({ score }: { score: number }) => {
 };
 
 const DebtPage = () => {
+  const { format, currency } = useCurrency();
   const score = 52;
   const [checked, setChecked] = useState({ income: '', savings: '', bnpl: '', loans: '' });
   const [simScore, setSimScore] = useState<number | null>(null);
@@ -70,7 +72,7 @@ const DebtPage = () => {
               </span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {[['Outstanding', `RM ${b.amount}`], ['Monthly', `RM ${b.monthly}`], ['Status', b.status]].map(([l, v]) => (
+              {[['Outstanding', format(b.amount)], ['Monthly', format(b.monthly)], ['Status', b.status]].map(([l, v]) => (
                 <div key={l} className="text-center">
                   <p className="text-[9px] text-muted-foreground mb-0.5">{l}</p>
                   <p className="text-xs font-bold text-foreground">{v}</p>
@@ -89,10 +91,10 @@ const DebtPage = () => {
         <p className="text-[11px] text-muted-foreground mb-3.5">Enter your details to get a personalised risk score</p>
         <div className="grid grid-cols-2 gap-2.5 mb-3.5">
           {[
-            ['Monthly Income (RM)', 'income', 'e.g. 1500'],
-            ['Monthly Savings (RM)', 'savings', 'e.g. 300'],
-            ['Total BNPL (RM)', 'bnpl', 'e.g. 450'],
-            ['Other Loans (RM)', 'loans', 'e.g. 0'],
+            [`Monthly Income (${currency.symbol})`, 'income', 'e.g. 1500'],
+            [`Monthly Savings (${currency.symbol})`, 'savings', 'e.g. 300'],
+            [`Total BNPL (${currency.symbol})`, 'bnpl', 'e.g. 450'],
+            [`Other Loans (${currency.symbol})`, 'loans', 'e.g. 0'],
           ].map(([label, key, ph]) => (
             <div key={key}>
               <p className="text-[10px] text-muted-foreground mb-1 font-semibold">{label}</p>

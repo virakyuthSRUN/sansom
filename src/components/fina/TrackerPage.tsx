@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { EXPENSES } from '@/lib/constants';
 import DynamicIcon from './DynamicIcon';
 import { Bot, AlertTriangle } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const CAT_SPEND = [
   { cat: 'Shopping', amt: 89.9, color: '#f97316', pct: 28 },
@@ -14,6 +15,7 @@ const CAT_SPEND = [
 const FILTERS = ['All', 'Food', 'Transport', 'Shopping', 'BNPL', 'Entertainment'];
 
 const TrackerPage = () => {
+  const { format } = useCurrency();
   const [activeFilter, setActiveFilter] = useState('All');
   const filtered = activeFilter === 'All' ? EXPENSES : EXPENSES.filter(e => e.cat === activeFilter);
 
@@ -27,7 +29,7 @@ const TrackerPage = () => {
           <Bot className="w-3.5 h-3.5" /> AI PREDICTION
         </p>
         <p className="text-[13px] text-foreground leading-relaxed">
-          At your current pace you'll spend <span className="font-bold text-destructive">RM 920</span> this month — <span className="font-bold">RM 20 over budget</span>. Cut 1 food delivery to stay safe.
+          At your current pace you'll spend <span className="font-bold text-destructive">{format(920)}</span> this month — <span className="font-bold">{format(20)} over budget</span>. Cut 1 food delivery to stay safe.
         </p>
       </div>
 
@@ -39,7 +41,7 @@ const TrackerPage = () => {
             <div className="flex justify-between mb-1">
               <span className="text-xs text-foreground font-medium">{c.cat}</span>
               <span className="text-xs font-bold" style={{ color: c.cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
-                RM {c.amt}
+                {format(c.amt)}
               </span>
             </div>
             <div className="h-1.5 bg-border rounded-full overflow-hidden">
@@ -89,7 +91,7 @@ const TrackerPage = () => {
             </div>
             <div className="text-right">
               <p className="text-sm font-bold" style={{ color: e.cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
-                −RM {e.amount.toFixed(2)}
+                −{format(e.amount)}
               </p>
               {e.cat === 'BNPL' && (
                 <p className="text-[9px] text-destructive font-semibold flex items-center gap-0.5 justify-end">
