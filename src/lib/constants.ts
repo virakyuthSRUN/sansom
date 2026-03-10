@@ -13,13 +13,12 @@ export const GOALS = [
   { id: 3, name: 'Emergency Fund', icon: 'ShieldCheck', target: 1000, saved: 800, color: '#00c896', deadline: 'Jun 2026' },
 ];
 
-export type PageId = 'home' | 'chat' | 'tracker' | 'debt' | 'goals' | 'settings';
+export type PageId = 'home' | 'chat' | 'tracker' | 'debtgoals' | 'settings';
 
-export const NAV_ITEMS: { id: PageId; icon: string; label: string }[] = [
-  { id: 'home', icon: 'Home', label: 'Home' },
-  { id: 'chat', icon: 'Sparkles', label: 'AI Chat' },
-  { id: 'tracker', icon: 'BarChart3', label: 'Tracker' },
-  { id: 'debt', icon: 'AlertTriangle', label: 'Debt' },
-  { id: 'goals', icon: 'Target', label: 'Goals' },
-  { id: 'settings', icon: 'Settings', label: 'Settings' },
+export const NAV_ITEMS: { id: PageId; label: string }[] = [
+  { id: 'home', label: 'Home' },
+  { id: 'tracker', label: 'Tracker' },
+  { id: 'chat', label: 'AI Chat' },
+  { id: 'debtgoals', label: 'Plans' },
+  { id: 'settings', label: 'Settings' },
 ];
