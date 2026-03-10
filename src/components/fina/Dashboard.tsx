@@ -4,12 +4,14 @@ import RingChart from './RingChart';
 import BarChart from './BarChart';
 import DynamicIcon from './DynamicIcon';
 import { ArrowUpRight, ArrowDownRight, AlertTriangle, Sparkles, ChevronRight } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface DashboardProps {
   setPage: (page: PageId) => void;
 }
 
 const Dashboard = ({ setPage }: DashboardProps) => {
+  const { format } = useCurrency();
   const spendPct = 68;
   const monthData = [
     { label: 'Oct', val: 820 }, { label: 'Nov', val: 950 },
@@ -26,11 +28,11 @@ const Dashboard = ({ setPage }: DashboardProps) => {
         <p className="text-xs opacity-80 font-medium mb-1">Good morning, Aisha</p>
         <p className="text-[11px] opacity-70 mb-4">Here's your financial snapshot</p>
         <p className="text-[13px] opacity-85 font-medium mb-1.5">Total Balance</p>
-        <p className="text-[28px] sm:text-[34px] font-bold tracking-tight font-display">RM 2,840<span className="text-lg">.50</span></p>
+        <p className="text-[28px] sm:text-[34px] font-bold tracking-tight font-display">{format(2840.50)}</p>
         <div className="flex gap-3 sm:gap-4 mt-4">
           {[
-            { label: 'Income', value: 'RM 1,800', Icon: ArrowUpRight, bg: 'rgba(255,255,255,0.2)' },
-            { label: 'Expenses', value: 'RM 620', Icon: ArrowDownRight, bg: 'rgba(255,80,80,0.25)' },
+            { label: 'Income', value: format(1800), Icon: ArrowUpRight, bg: 'rgba(255,255,255,0.2)' },
+            { label: 'Expenses', value: format(620), Icon: ArrowDownRight, bg: 'rgba(255,80,80,0.25)' },
           ].map(item => (
             <div key={item.label} className="rounded-xl px-3 sm:px-3.5 py-2 flex-1" style={{ background: item.bg }}>
               <p className="text-[10px] opacity-80 mb-0.5 flex items-center gap-1">
@@ -48,7 +50,7 @@ const Dashboard = ({ setPage }: DashboardProps) => {
           <p className="text-[11px] text-muted-foreground font-semibold self-start">Monthly Budget</p>
           <RingChart pct={spendPct} size={88} label={`${spendPct}%`} sub="used" />
           <p className="text-[11px] text-muted-foreground text-center">
-            RM 620 <span className="text-foreground font-semibold">/ RM 900</span>
+            {format(620)} <span className="text-foreground font-semibold">/ {format(900)}</span>
           </p>
         </div>
         <div className="bg-card rounded-2xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -89,7 +91,7 @@ const Dashboard = ({ setPage }: DashboardProps) => {
           <p className="text-xs font-bold text-primary">FINA's Tip of the Day</p>
         </div>
         <p className="text-[13px] text-foreground leading-relaxed">
-          "You're spending <b>RM 89</b> more on food this month vs last month. Try cooking 2x a week to save RM 120."
+          "You're spending <b>{format(89)}</b> more on food this month vs last month. Try cooking 2x a week to save {format(120)}."
         </p>
         <p className="text-[11px] text-primary mt-2 font-semibold">Ask FINA more →</p>
       </div>
@@ -112,7 +114,7 @@ const Dashboard = ({ setPage }: DashboardProps) => {
               </div>
             </div>
             <p className="text-[13px] font-bold" style={{ color: e.cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
-              −RM {e.amount.toFixed(2)}
+              −{format(e.amount)}
             </p>
           </div>
         ))}
