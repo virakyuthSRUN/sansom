@@ -1,49 +1,79 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Send } from 'lucide-react';
 
-const RESPONSES: Record<string, string> = {
-  default: "Based on your profile, I'd suggest reviewing your Shopee spending — it's up 34% this month. Want a detailed breakdown?",
-  spend: "This month you've spent $1,996 total. Your biggest category is Shopping ($90), followed by Food ($43). You're on track but watch the BNPL payments!",
-  debt: "Your current debt risk score is 52/100 — MEDIUM. You have 2 active BNPL plans totaling $450. I recommend closing one before adding more credit.",
-  save: "For a Bali trip at $2,000, saving $200/month gets you there in 10 months. I can auto-allocate $200 from your monthly income automatically.",
-  bnpl: "BNPL (Buy Now Pay Later) feels free but charges 18–24% interest if you miss payments. Your 2 active plans cost you $450 total. Pay them off before adding new ones!",
-};
-
-const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
+// Define the API response type
+interface ChatResponse {
+  success: boolean;
+  response: string;
+}
 
 interface Msg {
   role: 'user' | 'ai';
   text: string;
 }
 
+const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
+
 const ChatPage = () => {
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: 'ai', text: "Hi! I'm SAMSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?" },
-    { role: 'user', text: "Can I afford to buy AirPods this month? They cost $899." },
-    { role: 'ai', text: "Based on your current spending, you've used $620 of your $900 budget — leaving $280 free.\n\n$899 is $619 over your remaining budget. I'd recommend against it this month.\n\nTip: If you save $200/month, you can get them in 4.5 months without debt. Want me to set up a savings goal?" },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const send = (text: string) => {
+  // Your backend URL - replace with your Railway/Render URL when deployed
+  const API_BASE_URL = process.env.NODE_ENV === 'production' 
+    ? 'https://your-backend.railway.app'  // Replace with your actual backend URL
+    : 'http://localhost:3000';  // Local development
+
+  const send = async (text: string) => {
     if (!text.trim()) return;
+    
+    // Add user message to chat
     setMsgs(prev => [...prev, { role: 'user', text }]);
     setInput('');
     setTyping(true);
-    setTimeout(() => {
-      const lower = text.toLowerCase();
-      const reply = lower.includes('spend') ? RESPONSES.spend
-        : lower.includes('debt') || lower.includes('risk') ? RESPONSES.debt
-        : lower.includes('save') || lower.includes('trip') || lower.includes('bali') ? RESPONSES.save
-        : lower.includes('bnpl') ? RESPONSES.bnpl
-        : RESPONSES.default;
-      setMsgs(p => [...p, { role: 'ai', text: reply }]);
+
+    try {
+      // Call your backend API
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: 'student-123', // In real app, get from auth context
+          message: text
+        })
+      });
+
+      const data: ChatResponse = await response.json();
+      
+      if (data.success) {
+        // Add AI response from Claude
+        setMsgs(prev => [...prev, { role: 'ai', text: data.response }]);
+      } else {
+        // Handle error
+        setMsgs(prev => [...prev, { 
+          role: 'ai', 
+          text: "I'm having trouble connecting right now. Please try again in a moment." 
+        }]);
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMsgs(prev => [...prev, { 
+        role: 'ai', 
+        text: "Network error. Please check your connection and try again." 
+      }]);
+    } finally {
       setTyping(false);
-    }, 1200);
+    }
   };
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, typing]);
+  useEffect(() => { 
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+  }, [msgs, typing]);
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
@@ -55,7 +85,7 @@ const ChatPage = () => {
           </div>
           <div>
             <p className="text-[15px] font-bold text-foreground">SAMSOM AI Advisor</p>
-            <p className="text-[11px] text-primary font-medium">● Online · Powered by AI</p>
+            <p className="text-[11px] text-primary font-medium">● Online · Powered by SANSAM AI</p>
           </div>
         </div>
       </div>
@@ -87,7 +117,9 @@ const ChatPage = () => {
             </div>
             <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1">
               {[0, 1, 2].map(i => (
-                <div key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" style={{ animation: `pulse-dot 1s ${i * 0.2}s infinite` }} />
+                <div key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-pulse" 
+                  style={{ animationDelay: `${i * 0.2}s` }} 
+                />
               ))}
             </div>
           </div>
@@ -118,7 +150,8 @@ const ChatPage = () => {
           />
           <button
             onClick={() => send(input)}
-            className="gradient-primary text-primary-foreground rounded-xl px-4 py-3 font-semibold text-sm shadow-primary hover:shadow-primary-hover transition-all flex-shrink-0"
+            disabled={typing}
+            className="gradient-primary text-primary-foreground rounded-xl px-4 py-3 font-semibold text-sm shadow-primary hover:shadow-primary-hover transition-all flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4" />
           </button>

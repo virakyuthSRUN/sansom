@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { type PageId, NAV_ITEMS } from '@/lib/constants';
 import Dashboard from '@/components/fina/Dashboard';
 import ChatPage from '@/components/fina/ChatPage';
 import TrackerPage from '@/components/fina/TrackerPage';
 import DebtGoalsPage from '@/components/fina/DebtGoalsPage';
 import SettingsPage from '@/components/fina/SettingsPage';
-import { Home, Sparkles, BarChart3, Shield, Settings } from 'lucide-react';
+import { Home, Sparkles, BarChart3, Shield, Settings, LogOut, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const NAV_ICONS: Record<PageId, React.ElementType> = {
   home: Home,
@@ -25,15 +27,45 @@ const PAGE_TITLES: Record<PageId, string> = {
 
 const Index = () => {
   const [page, setPage] = useState<PageId>('home');
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
+  // Get user display name
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
   return (
     <div className="flex min-h-screen bg-background">
       <div className="w-full max-w-2xl mx-auto flex flex-col min-h-screen lg:max-w-4xl xl:max-w-5xl">
-        {/* Header */}
+        {/* Header with User Info */}
         <div className="px-4 sm:px-6 pt-3 pb-3 flex justify-between items-center flex-shrink-0 bg-card/80 backdrop-blur-sm sticky top-0 z-10 border-b border-border">
-          <h1 className="text-xl font-extrabold text-foreground font-display tracking-tight">{PAGE_TITLES[page]}</h1>
-          <div className="w-[38px] h-[38px] rounded-xl gradient-primary flex items-center justify-center shadow-primary">
-            {(() => { const Icon = NAV_ICONS[page]; return <Icon className="w-5 h-5 text-primary-foreground" />; })()}
+          <h1 className="text-xl font-extrabold text-foreground font-display tracking-tight">
+            {PAGE_TITLES[page]}
+          </h1>
+          
+          <div className="flex items-center gap-3">
+            {/* User Info (hidden on mobile) */}
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                <User className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-xs text-muted-foreground max-w-[120px] truncate">
+                {displayName}
+              </span>
+            </div>
+
+            {/* Sign Out Button */}
+            <button
+              onClick={handleSignOut}
+              className="w-[38px] h-[38px] rounded-xl bg-accent flex items-center justify-center hover:bg-accent/80 transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4 text-primary" />
+            </button>
           </div>
         </div>
 
