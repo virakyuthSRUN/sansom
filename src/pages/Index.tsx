@@ -16,7 +16,7 @@ const NAV_ICONS: Record<PageId, React.ElementType> = {
 };
 
 const PAGE_TITLES: Record<PageId, string> = {
-  home: 'FINA',
+  home: 'SAMSOM',
   chat: 'AI Advisor',
   tracker: 'Tracker',
   debtgoals: 'Debt & Goals',

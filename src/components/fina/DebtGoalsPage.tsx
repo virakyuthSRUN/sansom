@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { GOALS } from '@/lib/constants';
 import RingChart from './RingChart';
 import DynamicIcon from './DynamicIcon';
-import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 /* ── Debt data ── */
