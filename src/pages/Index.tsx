@@ -28,7 +28,7 @@ const Index = () => {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <div className="w-full max-w-lg mx-auto flex flex-col min-h-screen">
+      <div className="w-full max-w-2xl mx-auto flex flex-col min-h-screen lg:max-w-4xl xl:max-w-5xl">
         {/* Header */}
         <div className="px-4 sm:px-6 pt-3 pb-3 flex justify-between items-center flex-shrink-0 bg-card/80 backdrop-blur-sm sticky top-0 z-10 border-b border-border">
           <h1 className="text-xl font-extrabold text-foreground font-display tracking-tight">{PAGE_TITLES[page]}</h1>
