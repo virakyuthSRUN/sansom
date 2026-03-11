@@ -17,8 +17,8 @@ const SettingsPage = () => {
           <User className="w-8 h-8 text-primary-foreground" />
         </div>
         <div className="flex-1">
-          <p className="text-[15px] font-bold text-foreground">Aisha Binti Ahmad</p>
-          <p className="text-[12px] text-muted-foreground">aisha.ahmad@email.com</p>
+          <p className="text-[15px] font-bold text-foreground">Hieng Dara</p>
+          <p className="text-[12px] text-muted-foreground">dara@samsom.app</p>
           <p className="text-[11px] text-primary font-semibold mt-1">Free Plan</p>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -68,7 +68,7 @@ const SettingsPage = () => {
         <div className="flex items-center justify-between py-3 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
-              <Bell className="w-4.5 h-4.5 text-primary" />
+              <Bell className="w-4 h-4 text-primary" />
             </div>
             <div>
               <p className="text-[13px] font-semibold text-foreground">Notifications</p>
@@ -91,7 +91,7 @@ const SettingsPage = () => {
         <div className="flex items-center justify-between py-3 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
-              {darkMode ? <Moon className="w-4.5 h-4.5 text-primary" /> : <Sun className="w-4.5 h-4.5 text-primary" />}
+              {darkMode ? <Moon className="w-4 h-4 text-primary" /> : <Sun className="w-4 h-4 text-primary" />}
             </div>
             <div>
               <p className="text-[13px] font-semibold text-foreground">Dark Mode</p>
@@ -114,7 +114,7 @@ const SettingsPage = () => {
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
-              <Palette className="w-4.5 h-4.5 text-primary" />
+              <Palette className="w-4 h-4 text-primary" />
             </div>
             <div>
               <p className="text-[13px] font-semibold text-foreground">Theme Color</p>
@@ -138,7 +138,7 @@ const SettingsPage = () => {
         <p className="text-[13px] font-bold text-foreground mb-3.5">Account</p>
         {[
           { icon: Shield, label: 'Privacy & Security', sub: 'Password, 2FA' },
-          { icon: LogOut, label: 'Log Out', sub: 'Sign out of FINA', destructive: true },
+          { icon: LogOut, label: 'Log Out', sub: 'Sign out of SAMSOM', destructive: true },
         ].map((item, i) => (
           <div
             key={i}
@@ -150,7 +150,7 @@ const SettingsPage = () => {
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
                 item.destructive ? 'bg-destructive/10' : 'bg-accent'
               }`}>
-                <item.icon className={`w-4.5 h-4.5 ${item.destructive ? 'text-destructive' : 'text-primary'}`} />
+                <item.icon className={`w-4 h-4 ${item.destructive ? 'text-destructive' : 'text-primary'}`} />
               </div>
               <div>
                 <p className={`text-[13px] font-semibold ${item.destructive ? 'text-destructive' : 'text-foreground'}`}>{item.label}</p>
@@ -162,7 +162,7 @@ const SettingsPage = () => {
         ))}
       </div>
 
-      <p className="text-[10px] text-muted-foreground text-center pb-4">FINA v1.0 · Made with care</p>
+      <p className="text-[10px] text-muted-foreground text-center pb-4">SAMSOM v1.0 · Smart AI Money Companion</p>
     </div>
   );
 };

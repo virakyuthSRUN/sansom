@@ -3,13 +3,13 @@ import { Sparkles, Send } from 'lucide-react';
 
 const RESPONSES: Record<string, string> = {
   default: "Based on your profile, I'd suggest reviewing your Shopee spending — it's up 34% this month. Want a detailed breakdown?",
-  spend: "This month you've spent RM 620 total. Your biggest category is Shopping (RM 90), followed by Food (RM 43). You're on track but watch the BNPL payments!",
-  debt: "Your current debt risk score is 52/100 — MEDIUM. You have 2 active BNPL plans totaling RM 450. I recommend closing one before adding more credit.",
-  save: "For a Bali trip at RM 2,000, saving RM 200/month gets you there in 10 months. I can auto-allocate RM 200 from your monthly income automatically.",
-  bnpl: "BNPL (Buy Now Pay Later) feels free but charges 18–24% interest if you miss payments. Your 2 active plans cost you RM 450 total. Pay them off before adding new ones!",
+  spend: "This month you've spent $1,996 total. Your biggest category is Shopping ($90), followed by Food ($43). You're on track but watch the BNPL payments!",
+  debt: "Your current debt risk score is 52/100 — MEDIUM. You have 2 active BNPL plans totaling $450. I recommend closing one before adding more credit.",
+  save: "For a Bali trip at $2,000, saving $200/month gets you there in 10 months. I can auto-allocate $200 from your monthly income automatically.",
+  bnpl: "BNPL (Buy Now Pay Later) feels free but charges 18–24% interest if you miss payments. Your 2 active plans cost you $450 total. Pay them off before adding new ones!",
 };
 
-const SUGGESTIONS = ["How's my spending this month?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
+const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
 
 interface Msg {
   role: 'user' | 'ai';
@@ -18,9 +18,9 @@ interface Msg {
 
 const ChatPage = () => {
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'ai', text: "Hi! I'm FINA, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?" },
-    { role: 'user', text: "Can I afford to buy AirPods this month? They cost RM 899." },
-    { role: 'ai', text: "Based on your current spending, you've used RM 620 of your RM 900 budget — leaving RM 280 free.\n\nRM 899 is RM 619 over your remaining budget. I'd recommend against it this month.\n\nTip: If you save RM 200/month, you can get them in 4.5 months without debt. Want me to set up a savings goal?" },
+    { role: 'ai', text: "Hi! I'm SAMSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?" },
+    { role: 'user', text: "Can I afford to buy AirPods this month? They cost $899." },
+    { role: 'ai', text: "Based on your current spending, you've used $620 of your $900 budget — leaving $280 free.\n\n$899 is $619 over your remaining budget. I'd recommend against it this month.\n\nTip: If you save $200/month, you can get them in 4.5 months without debt. Want me to set up a savings goal?" },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
@@ -54,7 +54,7 @@ const ChatPage = () => {
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <p className="text-[15px] font-bold text-foreground">FINA AI Advisor</p>
+            <p className="text-[15px] font-bold text-foreground">SAMSOM AI Advisor</p>
             <p className="text-[11px] text-primary font-medium">● Online · Powered by AI</p>
           </div>
         </div>
@@ -113,7 +113,7 @@ const ChatPage = () => {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send(input)}
-            placeholder="Ask FINA anything..."
+            placeholder="Ask SAMSOM anything..."
             className="flex-1 px-3.5 py-3 rounded-xl border-[1.5px] border-border text-sm text-foreground outline-none focus:border-primary transition-colors bg-card"
           />
           <button
