@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { GOALS } from '@/lib/constants';
+import { useGoals } from '@/contexts/GoalsContext';
 import RingChart from './RingChart';
 import DynamicIcon from './DynamicIcon';
-import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check } from 'lucide-react';
+import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check, Trash2 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import AddGoalDialog from './AddGoalDialog';
 
 /* ── Debt data ── */
 const BNPLS = [
@@ -12,7 +13,7 @@ const BNPLS = [
 ];
 
 const getColor = (s: number) => s <= 30 ? '#00c896' : s <= 60 ? '#ffb300' : '#ff4757';
-const getLabel = (s: number) => s <= 30 ? 'LOW RISK' : s <= 60 ? 'MEDIUM RISK' : 'HIGH RISK';
+const getLabel = (s: number) => s <= 20 ? 'SAFE' : s <= 30 ? 'LOW RISK' : s <= 60 ? 'MEDIUM RISK' : s <= 80 ? 'HIGH RISK' : 'CRITICAL';
 const getBg = (s: number) => s <= 30 ? 'hsl(var(--success-light))' : s <= 60 ? 'hsl(var(--warning-light))' : 'hsl(0 72% 96%)';
 
 const RiskIcon = ({ score }: { score: number }) => {
@@ -25,10 +26,12 @@ type Tab = 'debt' | 'goals';
 
 const DebtGoalsPage = () => {
   const { format, currency } = useCurrency();
+  const { goals, removeGoal } = useGoals();
   const score = 52;
   const [tab, setTab] = useState<Tab>('debt');
   const [checked, setChecked] = useState({ income: '', savings: '', bnpl: '', loans: '' });
   const [simScore, setSimScore] = useState<number | null>(null);
+  const [showAddGoal, setShowAddGoal] = useState(false);
 
   const simulate = () => {
     const i = parseFloat(checked.income) || 1500;
@@ -50,9 +53,7 @@ const DebtGoalsPage = () => {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
-              tab === t.id
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+              tab === t.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <t.icon className="w-4 h-4" />
@@ -162,12 +163,12 @@ const DebtGoalsPage = () => {
               <Sparkles className="w-3.5 h-3.5" /> AI SAVINGS PLAN
             </p>
             <p className="text-[13px] leading-relaxed">
-              Save <b>{format(200)}/month</b> across your 3 goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
+              Save <b>{format(200)}/month</b> across your {goals.length} goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
             </p>
           </div>
 
           {/* Goals */}
-          {GOALS.map(g => {
+          {goals.map(g => {
             const pct = Math.round((g.saved / g.target) * 100);
             const remaining = g.target - g.saved;
             const months = Math.ceil(remaining / 200);
@@ -183,7 +184,15 @@ const DebtGoalsPage = () => {
                       <p className="text-[11px] text-muted-foreground">Target by {g.deadline}</p>
                     </div>
                   </div>
-                  <RingChart pct={pct} size={56} color={g.color} stroke={6} label={`${pct}%`} />
+                  <div className="flex items-center gap-2">
+                    <RingChart pct={pct} size={56} color={g.color} stroke={6} label={`${pct}%`} />
+                    <button
+                      onClick={() => removeGoal(g.id)}
+                      className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center hover:bg-destructive/20 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-between mb-2">
                   <span className="text-xs text-muted-foreground">Saved: <b className="text-foreground">{format(g.saved)}</b></span>
@@ -206,12 +215,17 @@ const DebtGoalsPage = () => {
           })}
 
           {/* Add Goal */}
-          <div className="border-2 border-dashed border-border rounded-2xl p-5 flex items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors">
+          <button
+            onClick={() => setShowAddGoal(true)}
+            className="border-2 border-dashed border-border rounded-2xl p-5 flex items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors w-full"
+          >
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
               <Plus className="w-4 h-4 text-primary" />
             </div>
             <p className="text-[13px] font-semibold text-muted-foreground">Add a new savings goal</p>
-          </div>
+          </button>
+
+          <AddGoalDialog open={showAddGoal} onClose={() => setShowAddGoal(false)} />
         </>
       )}
     </div>

@@ -1,5 +1,6 @@
-import { EXPENSES, GOALS } from '@/lib/constants';
+import { EXPENSES } from '@/lib/constants';
 import type { PageId } from '@/lib/constants';
+import { useGoals } from '@/contexts/GoalsContext';
 import RingChart from './RingChart';
 import BarChart from './BarChart';
 import DynamicIcon from './DynamicIcon';
@@ -12,6 +13,7 @@ interface DashboardProps {
 
 const Dashboard = ({ setPage }: DashboardProps) => {
   const { format } = useCurrency();
+  const { goals } = useGoals();
   const spendPct = 68;
   const monthData = [
     { label: 'Oct', val: 820 }, { label: 'Nov', val: 950 },
@@ -49,12 +51,15 @@ const Dashboard = ({ setPage }: DashboardProps) => {
         <div className="flex justify-between items-center mb-3">
           <div>
             <p className="text-[13px] font-bold text-foreground">Savings</p>
-            <p className="text-[11px] text-muted-foreground">{format(11956)} <span className="text-foreground font-medium">out of {format(78256)}</span></p>
+            <p className="text-[11px] text-muted-foreground">
+              {format(goals.reduce((s, g) => s + g.saved, 0))}{' '}
+              <span className="text-foreground font-medium">out of {format(goals.reduce((s, g) => s + g.target, 0))}</span>
+            </p>
           </div>
           <button className="text-[11px] text-primary font-semibold" onClick={() => setPage('debtgoals')}>See all</button>
         </div>
         <div className="flex gap-3 items-center">
-          {GOALS.map(g => {
+          {goals.slice(0, 4).map(g => {
             const pct = Math.round((g.saved / g.target) * 100);
             return (
               <button key={g.id} onClick={() => setPage('debtgoals')} className="flex flex-col items-center gap-1.5 group">
@@ -132,9 +137,7 @@ const Dashboard = ({ setPage }: DashboardProps) => {
       {/* Recent Transactions */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <div className="flex justify-between items-center mb-3.5">
-          <div className="flex items-center gap-2">
-            <p className="text-[13px] font-bold text-foreground">Today</p>
-          </div>
+          <p className="text-[13px] font-bold text-foreground">Today</p>
           <button className="text-[11px] text-primary font-semibold" onClick={() => setPage('tracker')}>See all →</button>
         </div>
         {EXPENSES.slice(0, 3).map(e => (

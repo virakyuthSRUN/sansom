@@ -1,11 +1,19 @@
-import { useState } from 'react';
 import { User, DollarSign, Bell, Shield, LogOut, ChevronRight, Check, Moon, Sun, Palette } from 'lucide-react';
 import { useCurrency, CURRENCIES, type CurrencyCode } from '@/contexts/CurrencyContext';
+import { useTheme, type ThemeColor } from '@/contexts/ThemeContext';
+import { useState } from 'react';
+
+const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
+  { color: 'green', label: 'Green', hsl: 'hsl(162,100%,39%)' },
+  { color: 'blue', label: 'Blue', hsl: 'hsl(217,91%,60%)' },
+  { color: 'purple', label: 'Purple', hsl: 'hsl(280,80%,55%)' },
+  { color: 'red', label: 'Red', hsl: 'hsl(0,72%,51%)' },
+];
 
 const SettingsPage = () => {
   const { currency, setCurrencyCode } = useCurrency();
+  const { darkMode, toggleDarkMode, themeColor, setThemeColor } = useTheme();
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
 
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
@@ -52,9 +60,7 @@ const SettingsPage = () => {
                 </p>
                 <p className="text-[10px] text-muted-foreground">{c.label}</p>
               </div>
-              {currency.code === c.code && (
-                <Check className="w-4 h-4 text-primary flex-shrink-0" />
-              )}
+              {currency.code === c.code && <Check className="w-4 h-4 text-primary flex-shrink-0" />}
             </button>
           ))}
         </div>
@@ -77,13 +83,9 @@ const SettingsPage = () => {
           </div>
           <button
             onClick={() => setNotifications(!notifications)}
-            className={`w-11 h-6 rounded-full transition-all relative ${
-              notifications ? 'bg-primary' : 'bg-border'
-            }`}
+            className={`w-11 h-6 rounded-full transition-all relative ${notifications ? 'bg-primary' : 'bg-border'}`}
           >
-            <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 transition-all ${
-              notifications ? 'left-[22px]' : 'left-0.5'
-            }`} />
+            <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 transition-all ${notifications ? 'left-[22px]' : 'left-0.5'}`} />
           </button>
         </div>
 
@@ -95,22 +97,18 @@ const SettingsPage = () => {
             </div>
             <div>
               <p className="text-[13px] font-semibold text-foreground">Dark Mode</p>
-              <p className="text-[10px] text-muted-foreground">Coming soon</p>
+              <p className="text-[10px] text-muted-foreground">{darkMode ? 'On' : 'Off'}</p>
             </div>
           </div>
           <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`w-11 h-6 rounded-full transition-all relative ${
-              darkMode ? 'bg-primary' : 'bg-border'
-            }`}
+            onClick={toggleDarkMode}
+            className={`w-11 h-6 rounded-full transition-all relative ${darkMode ? 'bg-primary' : 'bg-border'}`}
           >
-            <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 transition-all ${
-              darkMode ? 'left-[22px]' : 'left-0.5'
-            }`} />
+            <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 transition-all ${darkMode ? 'left-[22px]' : 'left-0.5'}`} />
           </button>
         </div>
 
-        {/* Theme */}
+        {/* Theme Color */}
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
@@ -118,38 +116,32 @@ const SettingsPage = () => {
             </div>
             <div>
               <p className="text-[13px] font-semibold text-foreground">Theme Color</p>
-              <p className="text-[10px] text-muted-foreground">Default green</p>
+              <p className="text-[10px] text-muted-foreground capitalize">{themeColor}</p>
             </div>
           </div>
           <div className="flex gap-1.5">
-            {['hsl(162,100%,39%)', 'hsl(217,91%,60%)', 'hsl(280,80%,55%)', 'hsl(0,72%,51%)'].map((color, i) => (
-              <div
-                key={i}
-                className={`w-6 h-6 rounded-full border-2 ${i === 0 ? 'border-foreground' : 'border-transparent'}`}
-                style={{ background: color }}
+            {THEME_OPTIONS.map(t => (
+              <button
+                key={t.color}
+                onClick={() => setThemeColor(t.color)}
+                className={`w-6 h-6 rounded-full border-2 transition-all ${themeColor === t.color ? 'border-foreground scale-110' : 'border-transparent'}`}
+                style={{ background: t.hsl }}
               />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Security & Account */}
+      {/* Account */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">Account</p>
         {[
           { icon: Shield, label: 'Privacy & Security', sub: 'Password, 2FA' },
           { icon: LogOut, label: 'Log Out', sub: 'Sign out of SAMSOM', destructive: true },
         ].map((item, i) => (
-          <div
-            key={i}
-            className={`flex items-center justify-between py-3 cursor-pointer ${
-              i < 1 ? 'border-b border-border' : ''
-            }`}
-          >
+          <div key={i} className={`flex items-center justify-between py-3 cursor-pointer ${i < 1 ? 'border-b border-border' : ''}`}>
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                item.destructive ? 'bg-destructive/10' : 'bg-accent'
-              }`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.destructive ? 'bg-destructive/10' : 'bg-accent'}`}>
                 <item.icon className={`w-4 h-4 ${item.destructive ? 'text-destructive' : 'text-primary'}`} />
               </div>
               <div>
