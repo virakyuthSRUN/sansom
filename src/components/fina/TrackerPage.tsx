@@ -4,6 +4,7 @@ import { EXPENSES } from '@/lib/constants';
 import DynamicIcon from './DynamicIcon';
 import { Bot, AlertTriangle, Plus, X, RefreshCw, Banknote, Unlink, CheckCircle, XCircle } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 declare global {
   interface Window {
@@ -79,6 +80,7 @@ const CAT_ICONS: Record<string, { icon: string; color: string }> = {
 
 const TrackerPage = () => {
   const { format } = useCurrency();
+  const { profile } = useUserProfile();
   const queryClient = useQueryClient();
   
   // Local state
@@ -98,7 +100,7 @@ const TrackerPage = () => {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-  // React Query for bank transactions - data stays cached between tab switches!
+  // React Query for bank transactions - using real user ID
   const { 
     data: bankData,
     isLoading,
@@ -106,9 +108,9 @@ const TrackerPage = () => {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['bankTransactions', 'student-123'],
+    queryKey: ['bankTransactions', profile?.id || 'guest'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/teller/transactions/student-123`);
+      const response = await fetch(`${API_BASE_URL}/api/teller/transactions/${profile?.id || 'guest'}`);
       const data = await response.json();
       
       if (data.needsConnect) {
@@ -145,12 +147,12 @@ const TrackerPage = () => {
       
       return { transactions: [], bankName: '' };
     },
-    // 🚀 These options make tab switching instant!
-    staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
-    gcTime: 10 * 60 * 1000,   // Cache persists for 10 minutes
-    refetchOnWindowFocus: false, // Don't refetch when switching tabs
-    refetchOnMount: false, // Use cached data when component remounts
-    retry: 1, // Retry failed requests once
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
+    enabled: !!profile?.id, // Only fetch if user is logged in
   });
 
   // Extract transactions from query data
@@ -200,11 +202,12 @@ const TrackerPage = () => {
     setNewEntry({ name: '', amount: '', cat: 'Food' });
     setShowAddForm(false);
     
-    // Optional: Send cash transaction to backend
+    // Send cash transaction to backend with user ID
     fetch(`${API_BASE_URL}/api/transactions/manual`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        userId: profile?.id,
         name: newEntry.name,
         amount: parseFloat(newEntry.amount),
         category: newEntry.cat,
@@ -253,11 +256,11 @@ const TrackerPage = () => {
 
   // Manual refresh function
   const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['bankTransactions', 'student-123'] });
+    await queryClient.invalidateQueries({ queryKey: ['bankTransactions', profile?.id || 'guest'] });
     refetch();
   };
 
-  // Load Teller Connect script (keep your existing function)
+  // Load Teller Connect script
   const loadTellerScript = () => {
     return new Promise((resolve, reject) => {
       if (window.TellerConnect) {
@@ -274,37 +277,36 @@ const TrackerPage = () => {
     });
   };
 
-  // Connect bank function (keep your existing function)
+  // Connect bank function with user ID
   const connectBank = async () => {
-    // ... your existing connectBank code
+    // ... your existing connectBank code, but use profile?.id
   };
 
   // Disconnect bank function
   const disconnectBank = async () => {
     try {
-      await fetch(`${API_BASE_URL}/api/teller/disconnect/student-123`, {
+      await fetch(`${API_BASE_URL}/api/teller/disconnect/${profile?.id}`, {
         method: 'POST'
       });
       setTellerConnected(false);
       setBankName('');
-      // Clear React Query cache
-      queryClient.removeQueries({ queryKey: ['bankTransactions', 'student-123'] });
+      queryClient.removeQueries({ queryKey: ['bankTransactions', profile?.id || 'guest'] });
     } catch (error) {
       console.error('Error disconnecting bank:', error);
     }
   };
 
-  // Calculate AI prediction
+  // Calculate AI prediction using user's budget
   const getAIPrediction = () => {
     const dailyAvg = totalSpent / 30 || 0;
     const projectedTotal = dailyAvg * 30;
-    const budget = 900;
+    const budget = profile?.monthly_budget || 900;
     const overUnder = projectedTotal - budget;
     
     if (overUnder > 0) {
-      return `At your current pace you'll spend ${format(projectedTotal)} this month — ${format(overUnder)} over budget. Cut 1 ${categorySpend.Food ? 'food delivery' : 'expense'} to stay safe.`;
+      return `At your current pace you'll spend ${format(projectedTotal)} this month — ${format(overUnder)} over your ${format(budget)} budget. Cut 1 ${categorySpend.Food ? 'food delivery' : 'expense'} to stay safe.`;
     } else {
-      return `Great job! You're on track to spend ${format(projectedTotal)} this month — ${format(Math.abs(overUnder))} under budget. Keep it up!`;
+      return `Great job! You're on track to spend ${format(projectedTotal)} this month — ${format(Math.abs(overUnder))} under your ${format(budget)} budget. Keep it up!`;
     }
   };
 

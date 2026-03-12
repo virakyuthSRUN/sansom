@@ -4,6 +4,7 @@ import RingChart from './RingChart';
 import DynamicIcon from './DynamicIcon';
 import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 /* ── Debt data ── */
 const BNPLS = [
@@ -25,9 +26,10 @@ type Tab = 'debt' | 'goals';
 
 const DebtGoalsPage = () => {
   const { format, currency } = useCurrency();
+  const { profile } = useUserProfile();
   const score = 52;
   const [tab, setTab] = useState<Tab>('debt');
-  const [checked, setChecked] = useState({ income: '', savings: '', bnpl: '', loans: '' });
+  const [checked, setChecked] = useState({ income: profile?.monthly_budget?.toString() || '1500', savings: '', bnpl: '', loans: '' });
   const [simScore, setSimScore] = useState<number | null>(null);
 
   const simulate = () => {

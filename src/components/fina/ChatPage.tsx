@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Send } from 'lucide-react';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 // Define the API response type
 interface ChatResponse {
@@ -15,17 +16,16 @@ interface Msg {
 const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
 
 const ChatPage = () => {
+  const { profile } = useUserProfile();
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'ai', text: "Hi! I'm SAMSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?" },
+    { role: 'ai', text: `Hi${profile?.full_name ? ' ' + profile.full_name.split(' ')[0] : ''}! I'm SAMSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?` },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Your backend URL - replace with your Railway/Render URL when deployed
-  const API_BASE_URL = process.env.NODE_ENV === 'production' 
-    ? 'https://your-backend.railway.app'  // Replace with your actual backend URL
-    : 'http://localhost:3000';  // Local development
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
   const send = async (text: string) => {
     if (!text.trim()) return;
@@ -36,14 +36,14 @@ const ChatPage = () => {
     setTyping(true);
 
     try {
-      // Call your backend API
+      // Call your backend API with real user ID
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: 'student-123', // In real app, get from auth context
+          userId: profile?.id || 'guest', // Use real user ID from profile
           message: text
         })
       });
@@ -51,10 +51,8 @@ const ChatPage = () => {
       const data: ChatResponse = await response.json();
       
       if (data.success) {
-        // Add AI response from Claude
         setMsgs(prev => [...prev, { role: 'ai', text: data.response }]);
       } else {
-        // Handle error
         setMsgs(prev => [...prev, { 
           role: 'ai', 
           text: "I'm having trouble connecting right now. Please try again in a moment." 

@@ -5,6 +5,7 @@ import BarChart from './BarChart';
 import DynamicIcon from './DynamicIcon';
 import { ArrowUpRight, ArrowDownRight, AlertTriangle, Sparkles, ChevronRight, Plus } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 interface DashboardProps {
   setPage: (page: PageId) => void;
@@ -12,6 +13,8 @@ interface DashboardProps {
 
 const Dashboard = ({ setPage }: DashboardProps) => {
   const { format } = useCurrency();
+  const { profile } = useUserProfile();
+  
   const spendPct = 68;
   const monthData = [
     { label: 'Oct', val: 820 }, { label: 'Nov', val: 950 },
@@ -19,13 +22,16 @@ const Dashboard = ({ setPage }: DashboardProps) => {
     { label: 'Feb', val: 890 }, { label: 'Mar', val: 620, active: true },
   ];
 
+  // Get user's first name from profile
+  const firstName = profile?.full_name?.split(' ')[0] || 'Dara';
+
   return (
     <div className="flex flex-col gap-4 animate-slide-up">
       {/* Hero Balance Card */}
       <div className="gradient-primary rounded-3xl p-5 sm:p-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/[0.08]" />
         <div className="absolute -bottom-8 right-8 w-20 h-20 rounded-full bg-white/[0.06]" />
-        <p className="text-xs opacity-80 font-medium mb-1">Hello, Dara 👋</p>
+        <p className="text-xs opacity-80 font-medium mb-1">Hello, {firstName} 👋</p>
         <p className="text-[11px] opacity-70 mb-4">Here's your financial snapshot</p>
         <p className="text-[13px] opacity-85 font-medium mb-1.5">Balance</p>
         <p className="text-[28px] sm:text-[34px] font-bold tracking-tight font-display">{format(12004)}</p>
@@ -83,7 +89,7 @@ const Dashboard = ({ setPage }: DashboardProps) => {
           <p className="text-[11px] text-muted-foreground font-semibold self-start">Monthly Budget</p>
           <RingChart pct={spendPct} size={88} label={`${spendPct}%`} sub="used" />
           <p className="text-[11px] text-muted-foreground text-center">
-            {format(620)} <span className="text-foreground font-semibold">/ {format(900)}</span>
+            {format(620)} <span className="text-foreground font-semibold">/ {format(profile?.monthly_budget || 900)}</span>
           </p>
         </div>
         <div className="bg-card rounded-2xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">

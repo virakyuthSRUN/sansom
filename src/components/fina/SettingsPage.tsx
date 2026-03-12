@@ -1,30 +1,85 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, DollarSign, Bell, Shield, LogOut, ChevronRight, Check, Moon, Sun, Palette } from 'lucide-react';
 import { useCurrency, CURRENCIES, type CurrencyCode } from '@/contexts/CurrencyContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 const SettingsPage = () => {
   const { currency, setCurrencyCode } = useCurrency();
+  const { user, signOut } = useAuth();
+  const { profile, loading, updateProfile } = useUserProfile();
+  const navigate = useNavigate();
+  
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
+  const handleCurrencyChange = async (code: CurrencyCode) => {
+    setCurrencyCode(code);
+    
+    // Save to user profile in Supabase
+    setSaving(true);
+    await updateProfile({ currency: code });
+    setSaving(false);
+  };
+
+  // Format date
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-3.5 animate-slide-up">
+        <h1 className="text-lg font-bold text-foreground font-display">Settings</h1>
+        <div className="bg-card rounded-2xl p-8 shadow-sm flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
       <h1 className="text-lg font-bold text-foreground font-display">Settings</h1>
 
-      {/* Profile Card */}
-      <div className="bg-card rounded-2xl p-5 shadow-sm flex items-center gap-4">
+      {/* Profile Card - Now with REAL user data */}
+      <div 
+        onClick={() => navigate('/profile')}
+        className="bg-card rounded-2xl p-5 shadow-sm flex items-center gap-4 cursor-pointer hover:bg-accent/50 transition-colors"
+      >
         <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-primary">
           <User className="w-8 h-8 text-primary-foreground" />
         </div>
         <div className="flex-1">
-          <p className="text-[15px] font-bold text-foreground">Hieng Dara</p>
-          <p className="text-[12px] text-muted-foreground">dara@samsom.app</p>
-          <p className="text-[11px] text-primary font-semibold mt-1">Free Plan</p>
+          <p className="text-[15px] font-bold text-foreground">
+            {profile?.full_name || user?.user_metadata?.full_name || 'User'}
+          </p>
+          <p className="text-[12px] text-muted-foreground">
+            {profile?.email || user?.email}
+          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[11px] text-primary font-semibold">Free Plan</span>
+            <span className="text-[9px] text-muted-foreground">
+              Joined {formatDate(profile?.created_at)}
+            </span>
+          </div>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground" />
       </div>
 
-      {/* Currency Selection */}
+      {/* Currency Selection - Now saves to Supabase */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <div className="flex items-center gap-2.5 mb-3.5">
           <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
@@ -39,12 +94,13 @@ const SettingsPage = () => {
           {CURRENCIES.map(c => (
             <button
               key={c.code}
-              onClick={() => setCurrencyCode(c.code)}
+              onClick={() => handleCurrencyChange(c.code)}
+              disabled={saving}
               className={`flex items-center gap-2.5 p-3 rounded-xl border-[1.5px] transition-all text-left ${
                 currency.code === c.code
                   ? 'border-primary bg-accent'
                   : 'border-border bg-card hover:border-primary/50'
-              }`}
+              } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className="flex-1">
                 <p className={`text-[13px] font-bold ${currency.code === c.code ? 'text-primary' : 'text-foreground'}`}>
@@ -58,9 +114,38 @@ const SettingsPage = () => {
             </button>
           ))}
         </div>
+        {saving && (
+          <p className="text-[10px] text-primary mt-2 text-center">Saving preference...</p>
+        )}
       </div>
 
-      {/* Preferences */}
+      {/* Budget Overview - NEW SECTION with real data */}
+      <div className="bg-card rounded-2xl p-4 shadow-sm">
+        <p className="text-[13px] font-bold text-foreground mb-3.5">Budget Overview</p>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-muted-foreground">Monthly Budget</span>
+          <span className="text-sm font-bold text-foreground">
+            {currency.symbol}{profile?.monthly_budget?.toFixed(2) || '900.00'}
+          </span>
+        </div>
+        <div className="h-2 bg-border rounded-full overflow-hidden">
+          <div 
+            className="h-full rounded-full bg-primary transition-all duration-700"
+            style={{ width: '45%' }} // This would come from actual spending data
+          />
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          Based on your spending patterns
+        </p>
+        <button
+          onClick={() => navigate('/profile')}
+          className="w-full mt-3 text-xs text-primary font-semibold py-2 hover:underline"
+        >
+          Adjust Budget →
+        </button>
+      </div>
+
+      {/* Preferences - Keep as is */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">Preferences</p>
 
@@ -136,33 +221,55 @@ const SettingsPage = () => {
       {/* Security & Account */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">Account</p>
-        {[
-          { icon: Shield, label: 'Privacy & Security', sub: 'Password, 2FA' },
-          { icon: LogOut, label: 'Log Out', sub: 'Sign out of SAMSOM', destructive: true },
-        ].map((item, i) => (
-          <div
-            key={i}
-            className={`flex items-center justify-between py-3 cursor-pointer ${
-              i < 1 ? 'border-b border-border' : ''
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                item.destructive ? 'bg-destructive/10' : 'bg-accent'
-              }`}>
-                <item.icon className={`w-4 h-4 ${item.destructive ? 'text-destructive' : 'text-primary'}`} />
-              </div>
-              <div>
-                <p className={`text-[13px] font-semibold ${item.destructive ? 'text-destructive' : 'text-foreground'}`}>{item.label}</p>
-                <p className="text-[10px] text-muted-foreground">{item.sub}</p>
-              </div>
+        
+        {/* Privacy & Security */}
+        <div
+          onClick={() => navigate('/profile')}
+          className="flex items-center justify-between py-3 border-b border-border cursor-pointer hover:bg-accent/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
+              <Shield className="w-4 h-4 text-primary" />
             </div>
-            <ChevronRight className={`w-4 h-4 ${item.destructive ? 'text-destructive' : 'text-muted-foreground'}`} />
+            <div>
+              <p className="text-[13px] font-semibold text-foreground">Privacy & Security</p>
+              <p className="text-[10px] text-muted-foreground">Manage your account</p>
+            </div>
           </div>
-        ))}
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+
+        {/* Log Out */}
+        <div
+          onClick={handleSignOut}
+          className="flex items-center justify-between py-3 cursor-pointer hover:bg-destructive/5 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center">
+              <LogOut className="w-4 h-4 text-destructive" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-destructive">Log Out</p>
+              <p className="text-[10px] text-muted-foreground">Sign out of SAMSOM</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-destructive" />
+        </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground text-center pb-4">SAMSOM v1.0 · Smart AI Money Companion</p>
+      {/* Session Info */}
+      <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
+        <p className="text-[10px] text-muted-foreground text-center">
+          Signed in as <span className="text-foreground font-medium">{user?.email}</span>
+        </p>
+        <p className="text-[9px] text-muted-foreground text-center mt-1">
+          User ID: {user?.id?.substring(0, 8)}...
+        </p>
+      </div>
+
+      <p className="text-[10px] text-muted-foreground text-center pb-4">
+        SAMSOM v1.0 · Smart AI Money Companion
+      </p>
     </div>
   );
 };
