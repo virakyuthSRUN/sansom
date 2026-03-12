@@ -28,7 +28,7 @@ const DebtGoalsPage = () => {
   const { format, currency } = useCurrency();
   const { goals, removeGoal } = useGoals();
   const score = 52;
-  const [tab, setTab] = useState<Tab>('debt');
+  const [tab, setTab] = useState<Tab>('goals');
   const [checked, setChecked] = useState({ income: '', savings: '', bnpl: '', loans: '' });
   const [simScore, setSimScore] = useState<number | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
