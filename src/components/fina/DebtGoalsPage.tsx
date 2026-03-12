@@ -28,7 +28,7 @@ const DebtGoalsPage = () => {
   const { format, currency } = useCurrency();
   const { goals, removeGoal } = useGoals();
   const score = 52;
-  const [tab, setTab] = useState<Tab>('debt');
+  const [tab, setTab] = useState<Tab>('goals');
   const [checked, setChecked] = useState({ income: '', savings: '', bnpl: '', loans: '' });
   const [simScore, setSimScore] = useState<number | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -45,9 +45,9 @@ const DebtGoalsPage = () => {
     <div className="flex flex-col gap-3.5 animate-slide-up">
       {/* Tab Switcher */}
       <div className="flex gap-1 bg-muted rounded-xl p-1">
-        {([
-          { id: 'debt' as Tab, label: 'Debt Risk', icon: AlertTriangle },
+      {([
           { id: 'goals' as Tab, label: 'Goals', icon: Check },
+          { id: 'debt' as Tab, label: 'Debt Risk', icon: AlertTriangle },
         ]).map(t => (
           <button
             key={t.id}

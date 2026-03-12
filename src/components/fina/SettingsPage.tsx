@@ -1,5 +1,5 @@
-import { User, DollarSign, Bell, Shield, LogOut, ChevronRight, Check, Moon, Sun, Palette } from 'lucide-react';
-import { useCurrency, CURRENCIES, type CurrencyCode } from '@/contexts/CurrencyContext';
+import { User, DollarSign, Bell, Shield, LogOut, ChevronRight, Check, Moon, Sun, Palette, Camera, X, Save } from 'lucide-react';
+import { useCurrency, CURRENCIES } from '@/contexts/CurrencyContext';
 import { useTheme, type ThemeColor } from '@/contexts/ThemeContext';
 import { useState } from 'react';
 
@@ -10,26 +10,115 @@ const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
   { color: 'red', label: 'Red', hsl: 'hsl(0,72%,51%)' },
 ];
 
+interface Profile {
+  name: string;
+  email: string;
+  phone: string;
+  plan: string;
+}
+
 const SettingsPage = () => {
   const { currency, setCurrencyCode } = useCurrency();
   const { darkMode, toggleDarkMode, themeColor, setThemeColor } = useTheme();
   const [notifications, setNotifications] = useState(true);
 
+  const [profile, setProfile] = useState<Profile>(() => {
+    const stored = localStorage.getItem('samsom-profile');
+    return stored ? JSON.parse(stored) : { name: 'Hieng Dara', email: 'dara@samsom.app', phone: '+60 12-345 6789', plan: 'Free Plan' };
+  });
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Profile>(profile);
+
+  const saveProfile = () => {
+    setProfile(draft);
+    localStorage.setItem('samsom-profile', JSON.stringify(draft));
+    setEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setDraft(profile);
+    setEditing(false);
+  };
+
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
       <h1 className="text-lg font-bold text-foreground font-display">Settings</h1>
 
-      {/* Profile Card */}
-      <div className="bg-card rounded-2xl p-5 shadow-sm flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-primary">
-          <User className="w-8 h-8 text-primary-foreground" />
+      {/* Profile Card - Editable */}
+      <div className="bg-card rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-primary">
+              <User className="w-8 h-8 text-primary-foreground" />
+            </div>
+            {editing && (
+              <button className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
+                <Camera className="w-3 h-3 text-primary-foreground" />
+              </button>
+            )}
+          </div>
+          <div className="flex-1">
+            {!editing ? (
+              <>
+                <p className="text-[15px] font-bold text-foreground">{profile.name}</p>
+                <p className="text-[12px] text-muted-foreground">{profile.email}</p>
+                <p className="text-[11px] text-primary font-semibold mt-1">{profile.plan}</p>
+              </>
+            ) : (
+              <p className="text-[13px] font-bold text-foreground">Edit Profile</p>
+            )}
+          </div>
+          {!editing ? (
+            <button
+              onClick={() => { setDraft(profile); setEditing(true); }}
+              className="text-[12px] font-semibold text-primary bg-accent px-3 py-1.5 rounded-lg hover:bg-accent/80 transition-colors"
+            >
+              Edit
+            </button>
+          ) : (
+            <div className="flex gap-1.5">
+              <button onClick={cancelEdit} className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <button onClick={saveProfile} className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors">
+                <Save className="w-4 h-4 text-primary-foreground" />
+              </button>
+            </div>
+          )}
         </div>
-        <div className="flex-1">
-          <p className="text-[15px] font-bold text-foreground">Hieng Dara</p>
-          <p className="text-[12px] text-muted-foreground">dara@samsom.app</p>
-          <p className="text-[11px] text-primary font-semibold mt-1">Free Plan</p>
-        </div>
-        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+
+        {editing && (
+          <div className="flex flex-col gap-2.5 animate-slide-up">
+            {[
+              { label: 'Full Name', key: 'name' as const, placeholder: 'Your name' },
+              { label: 'Email', key: 'email' as const, placeholder: 'your@email.com' },
+              { label: 'Phone', key: 'phone' as const, placeholder: '+60 12-345 6789' },
+            ].map(field => (
+              <div key={field.key}>
+                <p className="text-[10px] text-muted-foreground mb-1 font-semibold">{field.label}</p>
+                <input
+                  className="w-full px-3 py-2.5 rounded-xl border-[1.5px] border-border text-[13px] text-foreground outline-none focus:border-primary transition-colors bg-background"
+                  placeholder={field.placeholder}
+                  value={draft[field.key]}
+                  onChange={e => setDraft(p => ({ ...p, [field.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!editing && (
+          <div className="grid grid-cols-2 gap-3 mt-1">
+            <div className="bg-muted rounded-xl p-3">
+              <p className="text-[10px] text-muted-foreground mb-0.5">Phone</p>
+              <p className="text-[12px] font-semibold text-foreground">{profile.phone}</p>
+            </div>
+            <div className="bg-muted rounded-xl p-3">
+              <p className="text-[10px] text-muted-foreground mb-0.5">Plan</p>
+              <p className="text-[12px] font-semibold text-primary">{profile.plan}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Currency Selection */}
