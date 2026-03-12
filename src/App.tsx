@@ -4,40 +4,31 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { UserProfileProvider } from "@/contexts/UserProfileContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index.tsx";
-import Login from "./pages/Login.tsx";
-import Register from "./pages/Register.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { GoalsProvider } from "@/contexts/GoalsContext"; // Add this back
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <UserProfileProvider> 
-        <CurrencyProvider>
+    <ThemeProvider>
+      <CurrencyProvider>
+        <GoalsProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
               <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                } />
+                <Route path="/" element={<Index />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
-        </CurrencyProvider>
-      </UserProfileProvider>
-    </AuthProvider>
+        </GoalsProvider>
+      </CurrencyProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

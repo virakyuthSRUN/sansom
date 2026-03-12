@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const GeminiService = require('../services/gemini-service'); // Changed
+const GroqService = require('../services/groq-service');
 const mockData = require('../data/mock-transactions.json');
 
-// Initialize Gemini service with API key
-console.log('🔑 Initializing Gemini service with API key:', !!process.env.GEMINI_API_KEY);
-const gemini = new GeminiService(process.env.GEMINI_API_KEY); // Changed
+// Initialize Groq service with API key
+console.log('🔑 Initializing Groq service with API key:', !!process.env.GROQ_API_KEY);
+const groq = new GroqService(process.env.GROQ_API_KEY);
 
 // POST /api/chat
 router.post('/', async (req, res) => {
@@ -14,10 +14,10 @@ router.post('/', async (req, res) => {
     
     console.log(`📨 Chat request from user ${userId}: "${message}"`);
     
-    // Use mock data (same as before)
+    // Use mock data
     const userData = mockData;
     
-    // Calculate stats (same as before)
+    // Calculate stats
     const spent = userData.transactions
       .filter(t => t.amount < 0)
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
@@ -35,8 +35,8 @@ router.post('/', async (req, res) => {
       bnplTotal
     };
     
-    // Get advice from Gemini
-    const advice = await gemini.getAdvice(context, message);
+    // Get advice from Groq
+    const advice = await groq.getAdvice(context, message);
     
     res.json({ 
       success: true, 

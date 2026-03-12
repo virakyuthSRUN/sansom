@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { GOALS } from '@/lib/constants';
+import { GOALS as INITIAL_GOALS } from '@/lib/constants';
 import RingChart from './RingChart';
 import DynamicIcon from './DynamicIcon';
+import AddGoalDialog from './AddGoalDialog';
 import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useUserProfile } from '@/contexts/UserProfileContext';
 
-/* ── Debt data ── */
+/* ── Dummy BNPL data ── */
 const BNPLS = [
   { name: 'Atome', platform: 'Shopee', amount: 300, monthly: 100, rate: 18, status: 'Active', risk: 'MEDIUM' as const },
   { name: 'GrabPay Later', platform: 'Grab', amount: 150, monthly: 75, rate: 24, status: 'Active', risk: 'HIGH' as const },
@@ -26,11 +26,12 @@ type Tab = 'debt' | 'goals';
 
 const DebtGoalsPage = () => {
   const { format, currency } = useCurrency();
-  const { profile } = useUserProfile();
   const score = 52;
   const [tab, setTab] = useState<Tab>('debt');
-  const [checked, setChecked] = useState({ income: profile?.monthly_budget?.toString() || '1500', savings: '', bnpl: '', loans: '' });
+  const [checked, setChecked] = useState({ income: '', savings: '', bnpl: '', loans: '' });
   const [simScore, setSimScore] = useState<number | null>(null);
+  const [goals, setGoals] = useState(INITIAL_GOALS);
+  const [showAddGoal, setShowAddGoal] = useState(false);
 
   const simulate = () => {
     const i = parseFloat(checked.income) || 1500;
@@ -38,6 +39,14 @@ const DebtGoalsPage = () => {
     const lo = parseFloat(checked.loans) || 0;
     const ratio = ((bn + lo) / i) * 100;
     setSimScore(Math.min(100, Math.round(ratio * 1.8)));
+  };
+
+  const addGoal = (newGoal: any) => {
+    const goalWithId = {
+      ...newGoal,
+      id: Date.now().toString(),
+    };
+    setGoals(prev => [...prev, goalWithId]);
   };
 
   return (
@@ -155,6 +164,17 @@ const DebtGoalsPage = () => {
               </div>
             )}
           </div>
+
+          {/* Debt Tips */}
+          <div className="bg-accent/10 rounded-2xl p-4 border border-accent/30">
+            <p className="text-[11px] font-bold text-primary mb-2">💡 TIPS TO REDUCE DEBT</p>
+            <ul className="text-xs text-foreground space-y-1.5 list-disc list-inside">
+              <li>Pay more than the minimum on your highest interest plan first</li>
+              <li>Consider consolidating multiple BNPL plans</li>
+              <li>Avoid taking new BNPL until existing ones are paid off</li>
+              <li>Set up automatic payments to avoid late fees</li>
+            </ul>
+          </div>
         </>
       ) : (
         <>
@@ -164,12 +184,12 @@ const DebtGoalsPage = () => {
               <Sparkles className="w-3.5 h-3.5" /> AI SAVINGS PLAN
             </p>
             <p className="text-[13px] leading-relaxed">
-              Save <b>{format(200)}/month</b> across your 3 goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
+              Save <b>{format(200)}/month</b> across your {goals.length} goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
             </p>
           </div>
 
           {/* Goals */}
-          {GOALS.map(g => {
+          {goals.map(g => {
             const pct = Math.round((g.saved / g.target) * 100);
             const remaining = g.target - g.saved;
             const months = Math.ceil(remaining / 200);
@@ -207,13 +227,23 @@ const DebtGoalsPage = () => {
             );
           })}
 
-          {/* Add Goal */}
-          <div className="border-2 border-dashed border-border rounded-2xl p-5 flex items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors">
+          {/* Add Goal Button */}
+          <button
+            onClick={() => setShowAddGoal(true)}
+            className="border-2 border-dashed border-border rounded-2xl p-5 flex items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors w-full"
+          >
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
               <Plus className="w-4 h-4 text-primary" />
             </div>
             <p className="text-[13px] font-semibold text-muted-foreground">Add a new savings goal</p>
-          </div>
+          </button>
+
+          {/* Add Goal Dialog */}
+          <AddGoalDialog 
+            open={showAddGoal} 
+            onClose={() => setShowAddGoal(false)}
+            onGoalAdded={addGoal}
+          />
         </>
       )}
     </div>

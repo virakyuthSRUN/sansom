@@ -1,29 +1,39 @@
-import { EXPENSES, GOALS } from '@/lib/constants';
+import { EXPENSES, GOALS } from '@/lib/constants'; // Import GOALS from constants
 import type { PageId } from '@/lib/constants';
 import RingChart from './RingChart';
 import BarChart from './BarChart';
 import DynamicIcon from './DynamicIcon';
 import { ArrowUpRight, ArrowDownRight, AlertTriangle, Sparkles, ChevronRight, Plus } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useUserProfile } from '@/contexts/UserProfileContext';
 
 interface DashboardProps {
   setPage: (page: PageId) => void;
 }
 
+// Dummy data
+const DUMMY_DATA = {
+  balance: 12004,
+  moneyIn: 14000,
+  moneyOut: 1996,
+  monthlySpent: 620,
+  monthlyBudget: 900,
+  spendPct: 68,
+  debtRisk: 'MEDIUM',
+  bnplCount: 2,
+  aiTip: "Cooking and eating in will help you save more money. You're spending $89 more on food this month vs last month."
+};
+
+const monthData = [
+  { label: 'Oct', val: 820 }, { label: 'Nov', val: 950 },
+  { label: 'Dec', val: 1100 }, { label: 'Jan', val: 780 },
+  { label: 'Feb', val: 890 }, { label: 'Mar', val: 620, active: true },
+];
+
 const Dashboard = ({ setPage }: DashboardProps) => {
   const { format } = useCurrency();
-  const { profile } = useUserProfile();
   
-  const spendPct = 68;
-  const monthData = [
-    { label: 'Oct', val: 820 }, { label: 'Nov', val: 950 },
-    { label: 'Dec', val: 1100 }, { label: 'Jan', val: 780 },
-    { label: 'Feb', val: 890 }, { label: 'Mar', val: 620, active: true },
-  ];
-
-  // Get user's first name from profile
-  const firstName = profile?.full_name?.split(' ')[0] || 'Dara';
+  // Use GOALS from constants - same as DebtGoalsPage
+  const goals = GOALS;
 
   return (
     <div className="flex flex-col gap-4 animate-slide-up">
@@ -31,14 +41,14 @@ const Dashboard = ({ setPage }: DashboardProps) => {
       <div className="gradient-primary rounded-3xl p-5 sm:p-6 text-primary-foreground relative overflow-hidden">
         <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/[0.08]" />
         <div className="absolute -bottom-8 right-8 w-20 h-20 rounded-full bg-white/[0.06]" />
-        <p className="text-xs opacity-80 font-medium mb-1">Hello, {firstName} 👋</p>
+        <p className="text-xs opacity-80 font-medium mb-1">Hello, Dara 👋</p>
         <p className="text-[11px] opacity-70 mb-4">Here's your financial snapshot</p>
         <p className="text-[13px] opacity-85 font-medium mb-1.5">Balance</p>
-        <p className="text-[28px] sm:text-[34px] font-bold tracking-tight font-display">{format(12004)}</p>
+        <p className="text-[28px] sm:text-[34px] font-bold tracking-tight font-display">{format(DUMMY_DATA.balance)}</p>
         <div className="flex gap-3 sm:gap-4 mt-4">
           {[
-            { label: 'Money in', value: format(14000), Icon: ArrowUpRight, bg: 'rgba(255,255,255,0.2)' },
-            { label: 'Money out', value: format(1996), Icon: ArrowDownRight, bg: 'rgba(255,80,80,0.25)' },
+            { label: 'Money in', value: format(DUMMY_DATA.moneyIn), Icon: ArrowUpRight, bg: 'rgba(255,255,255,0.2)' },
+            { label: 'Money out', value: format(DUMMY_DATA.moneyOut), Icon: ArrowDownRight, bg: 'rgba(255,80,80,0.25)' },
           ].map(item => (
             <div key={item.label} className="rounded-xl px-3 sm:px-3.5 py-2 flex-1" style={{ background: item.bg }}>
               <p className="text-[10px] opacity-80 mb-0.5 flex items-center gap-1">
@@ -54,13 +64,22 @@ const Dashboard = ({ setPage }: DashboardProps) => {
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <div className="flex justify-between items-center mb-3">
           <div>
-            <p className="text-[13px] font-bold text-foreground">Savings</p>
-            <p className="text-[11px] text-muted-foreground">{format(11956)} <span className="text-foreground font-medium">out of {format(78256)}</span></p>
+            <p className="text-[13px] font-bold text-foreground">Savings Goals</p>
+            {goals.length > 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                {format(goals.reduce((s, g) => s + g.saved, 0))}{' '}
+                <span className="text-foreground font-medium">out of {format(goals.reduce((s, g) => s + g.target, 0))}</span>
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">No goals yet</p>
+            )}
           </div>
-          <button className="text-[11px] text-primary font-semibold" onClick={() => setPage('debtgoals')}>See all</button>
+          <button className="text-[11px] text-primary font-semibold" onClick={() => setPage('debtgoals')}>
+            {goals.length > 0 ? 'See all' : 'Add goal'}
+          </button>
         </div>
         <div className="flex gap-3 items-center">
-          {GOALS.map(g => {
+          {goals.slice(0, 4).map(g => {
             const pct = Math.round((g.saved / g.target) * 100);
             return (
               <button key={g.id} onClick={() => setPage('debtgoals')} className="flex flex-col items-center gap-1.5 group">
@@ -74,12 +93,14 @@ const Dashboard = ({ setPage }: DashboardProps) => {
               </button>
             );
           })}
-          <button onClick={() => setPage('debtgoals')} className="flex flex-col items-center gap-1.5">
-            <div className="w-12 h-12 rounded-full border-2 border-dashed border-border flex items-center justify-center hover:border-primary transition-colors">
-              <Plus className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <span className="text-[9px] text-muted-foreground">Add</span>
-          </button>
+          {goals.length === 0 && (
+            <button onClick={() => setPage('debtgoals')} className="flex flex-col items-center gap-1.5">
+              <div className="w-12 h-12 rounded-full border-2 border-dashed border-border flex items-center justify-center hover:border-primary transition-colors">
+                <Plus className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <span className="text-[9px] text-muted-foreground">Add Goal</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -87,9 +108,9 @@ const Dashboard = ({ setPage }: DashboardProps) => {
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card rounded-2xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center gap-2">
           <p className="text-[11px] text-muted-foreground font-semibold self-start">Monthly Budget</p>
-          <RingChart pct={spendPct} size={88} label={`${spendPct}%`} sub="used" />
+          <RingChart pct={DUMMY_DATA.spendPct} size={88} label={`${DUMMY_DATA.spendPct}%`} sub="used" />
           <p className="text-[11px] text-muted-foreground text-center">
-            {format(620)} <span className="text-foreground font-semibold">/ {format(profile?.monthly_budget || 900)}</span>
+            {format(DUMMY_DATA.monthlySpent)} <span className="text-foreground font-semibold">/ {format(DUMMY_DATA.monthlyBudget)}</span>
           </p>
         </div>
         <div className="bg-card rounded-2xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -110,8 +131,8 @@ const Dashboard = ({ setPage }: DashboardProps) => {
               <AlertTriangle className="w-5 h-5" style={{ color: '#d97706' }} />
             </div>
             <div>
-              <p className="text-[13px] font-bold" style={{ color: '#d97706' }}>Debt Risk: MEDIUM</p>
-              <p className="text-[11px] text-muted-foreground">2 active BNPL plans detected</p>
+              <p className="text-[13px] font-bold" style={{ color: '#d97706' }}>Debt Risk: {DUMMY_DATA.debtRisk}</p>
+              <p className="text-[11px] text-muted-foreground">{DUMMY_DATA.bnplCount} active BNPL plans detected</p>
             </div>
           </div>
           <ChevronRight className="w-5 h-5" style={{ color: '#d97706' }} />
@@ -127,20 +148,18 @@ const Dashboard = ({ setPage }: DashboardProps) => {
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <p className="text-xs font-bold text-primary">SAMSOM's Tip of the Day</p>
+          <p className="text-xs font-bold text-primary">SANSAM's Tip</p>
         </div>
         <p className="text-[13px] text-foreground leading-relaxed">
-          "Cooking and eating in will help you save more money. You're spending <b>{format(89)}</b> more on food this month vs last month."
+          "{DUMMY_DATA.aiTip}"
         </p>
-        <p className="text-[11px] text-primary mt-2 font-semibold">Ask SAMSOM more →</p>
+        <p className="text-[11px] text-primary mt-2 font-semibold">Ask SANSAM more →</p>
       </div>
 
       {/* Recent Transactions */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <div className="flex justify-between items-center mb-3.5">
-          <div className="flex items-center gap-2">
-            <p className="text-[13px] font-bold text-foreground">Today</p>
-          </div>
+          <p className="text-[13px] font-bold text-foreground">Recent Transactions</p>
           <button className="text-[11px] text-primary font-semibold" onClick={() => setPage('tracker')}>See all →</button>
         </div>
         {EXPENSES.slice(0, 3).map(e => (

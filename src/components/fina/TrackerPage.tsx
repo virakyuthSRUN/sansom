@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { EXPENSES } from '@/lib/constants';
 import DynamicIcon from './DynamicIcon';
 import { Bot, AlertTriangle, Plus, X, RefreshCw, Banknote, Unlink, CheckCircle, XCircle } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useUserProfile } from '@/contexts/UserProfileContext';
 
 declare global {
   interface Window {
@@ -15,57 +13,8 @@ declare global {
     };
   }
 }
-// Types for bank transactions
-interface BankTransaction {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  category: string;
-  merchant: string;
-  paymentMethod: string;
-  bank?: string;
-  pending?: boolean;
-}
 
-interface CashEntry {
-  id: number;
-  name: string;
-  amount: number;
-  cat: string;
-  date: string;
-  icon: string;
-  color: string;
-  isCash?: boolean;
-}
-
-// Combined transaction type
-interface BaseTransaction {
-  id: string | number;
-  name: string;
-  amount: number;
-  cat: string;
-  date: string;
-  icon: string;
-  color: string;
-}
-
-interface BankTransactionItem extends BaseTransaction {
-  isBank: true;
-  bank: string;
-  pending?: boolean;
-  isCash?: never;
-}
-
-interface CashTransactionItem extends BaseTransaction {
-  isCash: true;
-  isBank?: never;
-  bank?: never;
-  pending?: never;
-}
-
-type TransactionItem = BankTransactionItem | CashTransactionItem;
-
+// Types and constants
 const FILTERS = ['All', 'Food', 'Transport', 'Shopping', 'BNPL', 'Entertainment', 'Other'];
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Entertainment', 'BNPL', 'Other'];
 
@@ -78,51 +27,56 @@ const CAT_ICONS: Record<string, { icon: string; color: string }> = {
   Other: { icon: 'Wallet', color: '#6b7280' },
 };
 
+const USER_ID = 'student-124';
+
 const TrackerPage = () => {
   const { format } = useCurrency();
-  const { profile } = useUserProfile();
   const queryClient = useQueryClient();
   
   // Local state
   const [activeFilter, setActiveFilter] = useState('All');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
+  const [cashEntries, setCashEntries] = useState<any[]>([]);
   const [newEntry, setNewEntry] = useState({ name: '', amount: '', cat: 'Food' });
+  const [connecting, setConnecting] = useState(false);
   
-  // Teller state
-  const [tellerConnected, setTellerConnected] = useState(false);
-  const [bankName, setBankName] = useState('');
-  const [needsConnect, setNeedsConnect] = useState(false);
-  
-  // Category spend data
-  const [categorySpend, setCategorySpend] = useState<Record<string, number>>({});
-  const [totalSpent, setTotalSpent] = useState(0);
-
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-  // React Query for bank transactions - using real user ID
+  // Query to check connection status
+  const { 
+    data: connectionData,
+    isLoading: connectionLoading,
+    refetch: refetchConnection
+  } = useQuery({
+    queryKey: ['bankConnection', USER_ID],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/teller/status/${USER_ID}`);
+      const data = await response.json();
+      console.log('📡 Connection status:', data);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  // Query for transactions
   const { 
     data: bankData,
-    isLoading,
+    isLoading: transactionsLoading,
     isFetching,
-    error,
-    refetch 
+    refetch: refetchTransactions
   } = useQuery({
-    queryKey: ['bankTransactions', profile?.id || 'guest'],
+    queryKey: ['bankTransactions', USER_ID],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/teller/transactions/${profile?.id || 'guest'}`);
+      console.log('📡 Fetching transactions...');
+      const response = await fetch(`${API_BASE_URL}/api/teller/transactions/${USER_ID}`);
       const data = await response.json();
-      
-      if (data.needsConnect) {
-        setTellerConnected(false);
-        setNeedsConnect(true);
-        return { transactions: [], bankName: '' };
-      }
+      console.log('📡 Transactions response:', data);
       
       if (data.success) {
-        const formatted = data.transactions.map((t: any) => ({
+        const formatted = data.transactions?.map((t: any) => ({
           id: t.id,
-          name: t.description,
+          name: t.description || t.name,
           amount: t.amount,
           cat: t.category || 'Other',
           date: new Date(t.date).toLocaleDateString('en-US', { 
@@ -133,11 +87,7 @@ const TrackerPage = () => {
           color: CAT_ICONS[t.category || 'Other']?.color || '#6b7280',
           bank: t.bank,
           pending: t.pending,
-        }));
-        
-        setTellerConnected(true);
-        setBankName(data.bankName);
-        setNeedsConnect(false);
+        })) || [];
         
         return {
           transactions: formatted,
@@ -150,117 +100,14 @@ const TrackerPage = () => {
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    retry: 1,
-    enabled: !!profile?.id, // Only fetch if user is logged in
+    refetchOnMount: true,
+    enabled: connectionData?.connected === true,
   });
 
-  // Extract transactions from query data
+  const isConnected = connectionData?.connected === true;
+  const bankName = connectionData?.bankName || bankData?.bankName || '';
   const bankTransactions = bankData?.transactions || [];
 
-  // Update category spend whenever transactions change
-  useEffect(() => {
-    calculateCategorySpend();
-  }, [bankTransactions, cashEntries]);
-
-  const calculateCategorySpend = () => {
-    const spend: Record<string, number> = {};
-    let total = 0;
-    
-    // Add bank transactions
-    bankTransactions.forEach((t: any) => {
-      const category = t.cat || 'Other';
-      const amount = t.amount;
-      spend[category] = (spend[category] || 0) + amount;
-      total += amount;
-    });
-    
-    // Add cash entries
-    cashEntries.forEach(e => {
-      spend[e.cat] = (spend[e.cat] || 0) + e.amount;
-      total += e.amount;
-    });
-    
-    setCategorySpend(spend);
-    setTotalSpent(total);
-  };
-
-  const addCashTransaction = () => {
-    if (!newEntry.name.trim() || !newEntry.amount) return;
-    const catInfo = CAT_ICONS[newEntry.cat] || CAT_ICONS.Other;
-    const newCashEntry: CashEntry = {
-      id: Date.now(),
-      name: newEntry.name,
-      amount: parseFloat(newEntry.amount),
-      cat: newEntry.cat,
-      date: 'Today',
-      icon: catInfo.icon,
-      color: catInfo.color,
-      isCash: true,
-    };
-    setCashEntries(prev => [...prev, newCashEntry]);
-    setNewEntry({ name: '', amount: '', cat: 'Food' });
-    setShowAddForm(false);
-    
-    // Send cash transaction to backend with user ID
-    fetch(`${API_BASE_URL}/api/transactions/manual`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: profile?.id,
-        name: newEntry.name,
-        amount: parseFloat(newEntry.amount),
-        category: newEntry.cat,
-      }),
-    }).catch(err => console.error('Failed to sync cash transaction:', err));
-  };
-
-  // Combine and sort all transactions
-  const allTransactions = (): TransactionItem[] => {
-    const bank: BankTransactionItem[] = bankTransactions.map((t: any) => ({
-      id: t.id,
-      name: t.name,
-      amount: t.amount,
-      cat: t.cat,
-      date: t.date,
-      icon: t.icon,
-      color: t.color,
-      isBank: true,
-      bank: t.bank,
-      pending: t.pending,
-    }));
-    
-    const cash: CashTransactionItem[] = cashEntries.map(e => ({
-      id: e.id,
-      name: e.name,
-      amount: e.amount,
-      cat: e.cat,
-      date: 'Today',
-      icon: e.icon,
-      color: e.color,
-      isCash: true,
-    }));
-    
-    return [...bank, ...cash].sort((a, b) => {
-      if (a.date === 'Today' && b.date !== 'Today') return -1;
-      if (b.date === 'Today' && a.date !== 'Today') return 1;
-      return 0;
-    });
-  };
-
-  const filteredTransactions = (): TransactionItem[] => {
-    const all = allTransactions();
-    if (activeFilter === 'All') return all;
-    return all.filter(t => t.cat === activeFilter);
-  };
-
-  // Manual refresh function
-  const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['bankTransactions', profile?.id || 'guest'] });
-    refetch();
-  };
-
-  // Load Teller Connect script
   const loadTellerScript = () => {
     return new Promise((resolve, reject) => {
       if (window.TellerConnect) {
@@ -277,36 +124,144 @@ const TrackerPage = () => {
     });
   };
 
-  // Connect bank function with user ID
   const connectBank = async () => {
-    // ... your existing connectBank code, but use profile?.id
+    setConnecting(true);
+    
+    try {
+      const configResponse = await fetch(`${API_BASE_URL}/api/teller/config`);
+      const configData = await configResponse.json();
+      
+      if (!configData.success) {
+        throw new Error('Failed to get Teller config');
+      }
+      
+      await loadTellerScript();
+      
+      const tellerConnect = window.TellerConnect.setup({
+        applicationId: configData.config.applicationId,
+        environment: configData.config.environment,
+        products: configData.config.products,
+        onInit: () => console.log('Teller Connect initialized'),
+        onSuccess: async (enrollment) => {
+          console.log('✅ Bank connected:', enrollment);
+          
+          try {
+            const callbackResponse = await fetch(`${API_BASE_URL}/api/teller/callback`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                accessToken: enrollment.accessToken,
+                enrollment: enrollment.enrollment,
+                userId: USER_ID
+              })
+            });
+            
+            const callbackData = await callbackResponse.json();
+            console.log('📡 Callback response:', callbackData);
+            
+            if (callbackData.success) {
+              await refetchConnection();
+              await refetchTransactions();
+            }
+          } catch (error) {
+            console.error('Callback error:', error);
+          } finally {
+            setConnecting(false);
+          }
+        },
+        onExit: () => {
+          console.log('User closed Teller Connect');
+          setConnecting(false);
+        },
+        onError: (error) => {
+          console.error('Teller Connect error:', error);
+          setConnecting(false);
+        }
+      });
+      
+      tellerConnect.open();
+    } catch (error) {
+      console.error('Failed to connect bank:', error);
+      setConnecting(false);
+    }
   };
 
-  // Disconnect bank function
   const disconnectBank = async () => {
     try {
-      await fetch(`${API_BASE_URL}/api/teller/disconnect/${profile?.id}`, {
-        method: 'POST'
-      });
-      setTellerConnected(false);
-      setBankName('');
-      queryClient.removeQueries({ queryKey: ['bankTransactions', profile?.id || 'guest'] });
+      await fetch(`${API_BASE_URL}/api/teller/disconnect/${USER_ID}`, { method: 'POST' });
+      queryClient.removeQueries({ queryKey: ['bankTransactions', USER_ID] });
+      await refetchConnection();
     } catch (error) {
       console.error('Error disconnecting bank:', error);
     }
   };
 
-  // Calculate AI prediction using user's budget
+  const addCashTransaction = () => {
+    if (!newEntry.name.trim() || !newEntry.amount) return;
+    const catInfo = CAT_ICONS[newEntry.cat] || CAT_ICONS.Other;
+    const newCashEntry = {
+      id: Date.now(),
+      name: newEntry.name,
+      amount: parseFloat(newEntry.amount),
+      cat: newEntry.cat,
+      date: 'Today',
+      icon: catInfo.icon,
+      color: catInfo.color,
+      isCash: true,
+    };
+    setCashEntries(prev => [...prev, newCashEntry]);
+    setNewEntry({ name: '', amount: '', cat: 'Food' });
+    setShowAddForm(false);
+    
+    fetch(`${API_BASE_URL}/api/transactions/manual`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: USER_ID,
+        name: newEntry.name,
+        amount: parseFloat(newEntry.amount),
+        category: newEntry.cat,
+      }),
+    }).catch(err => console.error('Failed to sync cash transaction:', err));
+  };
+
+  // Combine bank and cash transactions
+  const allTransactions = [
+    ...bankTransactions,
+    ...cashEntries
+  ];
+
+  const filteredTransactions = activeFilter === 'All' 
+    ? allTransactions 
+    : allTransactions.filter(t => t.cat === activeFilter);
+
+  // Calculate category spend from bank transactions only
+  const categorySpend = bankTransactions.reduce((acc: Record<string, number>, t: any) => {
+    const cat = t.cat || 'Other';
+    acc[cat] = (acc[cat] || 0) + t.amount;
+    return acc;
+  }, {});
+
+  // Ensure all categories have at least a value of 0 for display
+  const allCategoriesWithValues = CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = categorySpend[cat] || 0;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const totalSpent = bankTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+
   const getAIPrediction = () => {
+    if (!isConnected) return "Connect your bank to see AI-powered predictions.";
+    
     const dailyAvg = totalSpent / 30 || 0;
     const projectedTotal = dailyAvg * 30;
-    const budget = profile?.monthly_budget || 900;
+    const budget = 900;
     const overUnder = projectedTotal - budget;
     
     if (overUnder > 0) {
-      return `At your current pace you'll spend ${format(projectedTotal)} this month — ${format(overUnder)} over your ${format(budget)} budget. Cut 1 ${categorySpend.Food ? 'food delivery' : 'expense'} to stay safe.`;
+      return `At your current pace you'll spend ${format(projectedTotal)} this month — ${format(overUnder)} over budget.`;
     } else {
-      return `Great job! You're on track to spend ${format(projectedTotal)} this month — ${format(Math.abs(overUnder))} under your ${format(budget)} budget. Keep it up!`;
+      return `Great job! You're on track to spend ${format(projectedTotal)} this month — ${format(Math.abs(overUnder))} under budget.`;
     }
   };
 
@@ -315,9 +270,9 @@ const TrackerPage = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-lg font-bold text-foreground font-display">Spending Tracker</h1>
         <div className="flex gap-2">
-          {tellerConnected && (
+          {isConnected && (
             <button
-              onClick={handleRefresh}
+              onClick={() => refetchTransactions()}
               disabled={isFetching}
               className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center"
               title="Refresh bank transactions"
@@ -334,52 +289,8 @@ const TrackerPage = () => {
         </div>
       </div>
 
-      {/* Bank Connection UI */}
-      {!tellerConnected && !needsConnect && (
-        <div className="bg-card rounded-2xl p-4 shadow-sm border border-primary/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Banknote className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-[13px] font-bold">Connect Your Bank</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Get real-time transactions automatically
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={connectBank}
-              className="gradient-primary text-primary-foreground rounded-xl px-4 py-2 text-xs font-semibold"
-            >
-              Connect Bank
-            </button>
-          </div>
-        </div>
-      )}
-
-      {needsConnect && !tellerConnected && (
-        <div className="rounded-2xl p-4 shadow-sm border border-warning/30 bg-warning/5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <XCircle className="w-5 h-5 text-warning" />
-              <div>
-                <p className="text-[13px] font-bold">No Bank Connected</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Connect to see your real transactions
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={connectBank}
-              className="bg-warning text-white rounded-xl px-4 py-2 text-xs font-semibold"
-            >
-              Connect
-            </button>
-          </div>
-        </div>
-      )}
-
-      {tellerConnected && (
+      {/* Bank Connection Status */}
+      {isConnected ? (
         <div className="rounded-2xl p-4 shadow-sm border border-green-500/30 bg-green-500/5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -395,6 +306,27 @@ const TrackerPage = () => {
             >
               <Unlink className="w-3 h-3" />
               Disconnect
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-card rounded-2xl p-4 shadow-sm border border-primary/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Banknote className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-[13px] font-bold">Connect Your Bank</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Get real-time transactions automatically
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={connectBank}
+              disabled={connecting}
+              className="gradient-primary text-primary-foreground rounded-xl px-4 py-2 text-xs font-semibold disabled:opacity-50"
+            >
+              {connecting ? 'Connecting...' : 'Connect Bank'}
             </button>
           </div>
         </div>
@@ -444,33 +376,40 @@ const TrackerPage = () => {
       )}
 
       {/* AI Prediction */}
-      {!isLoading && (
-        <div className="rounded-2xl p-4 border-[1.5px] border-info/30" style={{ background: 'linear-gradient(135deg, hsl(217 100% 96%), hsl(162 80% 97%))' }}>
-          <p className="text-[11px] text-info font-bold mb-1.5 flex items-center gap-1">
-            <Bot className="w-3.5 h-3.5" /> AI PREDICTION
-          </p>
-          <p className="text-[13px] text-foreground leading-relaxed">
-            {getAIPrediction()}
-          </p>
-        </div>
-      )}
+      <div className="rounded-2xl p-4 border-[1.5px] border-info/30" style={{ background: 'linear-gradient(135deg, hsl(217 100% 96%), hsl(162 80% 97%))' }}>
+        <p className="text-[11px] text-info font-bold mb-1.5 flex items-center gap-1">
+          <Bot className="w-3.5 h-3.5" /> AI PREDICTION
+        </p>
+        <p className="text-[13px] text-foreground leading-relaxed">
+          {getAIPrediction()}
+        </p>
+      </div>
 
-      {/* Category Breakdown */}
+      {/* Category Breakdown - Always show all categories */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">By Category</p>
-        {Object.entries(categorySpend).map(([cat, amt]) => {
-          const percentage = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0;
+        {CATEGORIES.map(cat => {
+          const amount = categorySpend[cat] || 0;
+          const percentage = totalSpent > 0 ? Math.round((amount / totalSpent) * 100) : 0;
           const color = CAT_ICONS[cat]?.color || '#6b7280';
+          
           return (
             <div key={cat} className="mb-2.5">
               <div className="flex justify-between mb-1">
                 <span className="text-xs text-foreground font-medium">{cat}</span>
                 <span className="text-xs font-bold" style={{ color: cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
-                  {format(amt)}
+                  {format(amount)}
                 </span>
               </div>
               <div className="h-1.5 bg-border rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${percentage}%`, background: color }} />
+                <div 
+                  className="h-full rounded-full transition-all duration-700" 
+                  style={{ 
+                    width: `${percentage}%`, 
+                    background: color,
+                    opacity: amount === 0 ? 0.3 : 1
+                  }} 
+                />
               </div>
             </div>
           );
@@ -478,77 +417,75 @@ const TrackerPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-1.5 flex-wrap">
-        {FILTERS.map(f => (
-          <button
-            key={f}
-            onClick={() => setActiveFilter(f)}
-            className={`text-[11px] px-3 py-1 rounded-full border-[1.5px] transition-all ${
-              activeFilter === f
-                ? 'border-primary bg-accent text-primary font-semibold'
-                : 'border-border bg-card text-muted-foreground'
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
+      {isConnected && allTransactions.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              onClick={() => setActiveFilter(f)}
+              className={`text-[11px] px-3 py-1 rounded-full border-[1.5px] transition-all ${
+                activeFilter === f
+                  ? 'border-primary bg-accent text-primary font-semibold'
+                  : 'border-border bg-card text-muted-foreground'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Transactions */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
-        {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Loading transactions...</div>
-        ) : filteredTransactions().length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">No transactions found</div>
-        ) : (
-          filteredTransactions().map((e, i) => (
-            <div
-              key={e.id}
-              className={`flex items-center justify-between px-1.5 py-2.5 rounded-lg hover:bg-muted/50 transition-colors ${
-                i < filteredTransactions().length - 1 ? 'border-b border-border' : ''
-              }`}
+        {connectionLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Checking connection...</div>
+        ) : !isConnected ? (
+          <div className="text-center py-8">
+            <Banknote className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-foreground mb-2">No Bank Connected</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Connect your bank account to see your transactions
+            </p>
+            <button
+              onClick={connectBank}
+              className="gradient-primary text-primary-foreground rounded-xl px-4 py-2 text-xs font-semibold"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${e.color}18` }}>
-                  <DynamicIcon name={e.icon} className="w-5 h-5" style={{ color: e.color }} />
-                </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-foreground">{e.name}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${e.color}18`, color: e.color }}>
-                      {e.cat}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">{e.date}</span>
-                    {e.isBank && e.bank && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                        {e.bank}
+              Connect Bank
+            </button>
+          </div>
+        ) : transactionsLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Loading transactions...</div>
+        ) : filteredTransactions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">No transactions found for this filter</div>
+        ) : (
+          <div className="space-y-2">
+            {filteredTransactions.map((t: any) => (
+              <div key={t.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${t.color}18` }}>
+                    <DynamicIcon name={t.icon} className="w-5 h-5" style={{ color: t.color }} />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-semibold text-foreground">{t.name}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${t.color}18`, color: t.color }}>
+                        {t.cat}
                       </span>
-                    )}
-                    {e.isBank && e.pending && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">
-                        Pending
-                      </span>
-                    )}
-                    {e.isCash && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">
-                        Cash
-                      </span>
-                    )}
+                      <span className="text-[10px] text-muted-foreground">{t.date}</span>
+                      {t.pending && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">
+                          Pending
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold" style={{ color: e.cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
-                  −{format(e.amount)}
+                <p className="text-sm font-bold" style={{ color: t.cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
+                  −{format(t.amount)}
                 </p>
-                {e.cat === 'BNPL' && (
-                  <p className="text-[9px] text-destructive font-semibold flex items-center gap-0.5 justify-end">
-                    DEBT <AlertTriangle className="w-3 h-3" />
-                  </p>
-                )}
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>

@@ -3,23 +3,21 @@ import RingChart from './RingChart';
 import DynamicIcon from './DynamicIcon';
 import { Sparkles, Plus, Check } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useUserProfile } from '@/contexts/UserProfileContext';
 
 const GoalsPage = () => {
   const { format } = useCurrency();
-  const { profile } = useUserProfile();
 
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
       <h1 className="text-lg font-bold text-foreground font-display">Savings Goals</h1>
 
-      {/* AI Plan Banner - Personalized with user's budget */}
+      {/* AI Plan Banner */}
       <div className="gradient-primary rounded-2xl p-4 text-primary-foreground">
         <p className="text-[11px] font-bold opacity-80 mb-1.5 flex items-center gap-1">
           <Sparkles className="w-3.5 h-3.5" /> AI SAVINGS PLAN
         </p>
         <p className="text-[13px] leading-relaxed">
-          Based on your monthly budget of {format(profile?.monthly_budget || 900)}, save <b>{format(200)}/month</b> across your 3 goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
+          Save <b>{format(200)}/month</b> across your 3 goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
         </p>
       </div>
 

@@ -55,7 +55,7 @@ const Register = () => {
           </div>
           <h1 className="text-2xl font-bold text-foreground font-display">Create Account</h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Join SAMSOM to start your financial journey
+            Join SANSOM to start your financial journey
           </p>
         </div>
 

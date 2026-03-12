@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Send } from 'lucide-react';
-import { useUserProfile } from '@/contexts/UserProfileContext';
 
 // Define the API response type
 interface ChatResponse {
@@ -15,35 +14,34 @@ interface Msg {
 
 const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
 
+// Dummy welcome message
+const WELCOME_MESSAGE = "Hi Dara! I'm SANSAM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?";
+
 const ChatPage = () => {
-  const { profile } = useUserProfile();
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'ai', text: `Hi${profile?.full_name ? ' ' + profile.full_name.split(' ')[0] : ''}! I'm SAMSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?` },
+    { role: 'ai', text: WELCOME_MESSAGE },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Your backend URL - replace with your Railway/Render URL when deployed
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
   const send = async (text: string) => {
     if (!text.trim()) return;
     
-    // Add user message to chat
     setMsgs(prev => [...prev, { role: 'user', text }]);
     setInput('');
     setTyping(true);
 
     try {
-      // Call your backend API with real user ID
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: profile?.id || 'guest', // Use real user ID from profile
+          userId: 'student-123',
           message: text
         })
       });
@@ -82,7 +80,7 @@ const ChatPage = () => {
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <p className="text-[15px] font-bold text-foreground">SAMSOM AI Advisor</p>
+            <p className="text-[15px] font-bold text-foreground">SANSAM AI Advisor</p>
             <p className="text-[11px] text-primary font-medium">● Online · Powered by SANSAM AI</p>
           </div>
         </div>
@@ -143,7 +141,7 @@ const ChatPage = () => {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send(input)}
-            placeholder="Ask SAMSOM anything..."
+            placeholder="Ask SANSAM anything..."
             className="flex-1 px-3.5 py-3 rounded-xl border-[1.5px] border-border text-sm text-foreground outline-none focus:border-primary transition-colors bg-card"
           />
           <button
