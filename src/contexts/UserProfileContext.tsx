@@ -62,7 +62,7 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
               full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
               phone: '',
               currency: 'USD',
-              monthly_budget: 900,
+              monthly_budget: 5000,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })

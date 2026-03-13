@@ -46,6 +46,7 @@ export interface FinancialData {
   monthlySpent: number;
   monthlyBudget: number;
   spendPct: number;
+  isBankConnected: boolean; // Add this to track connection status
   
   // Debt
   debtRisk: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -72,6 +73,11 @@ interface FinancialDataContextType {
   loading: boolean;
   updateGoal: (goalId: string, savedAmount: number) => void;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  updateFromTracker: (trackerData: { 
+    totalSpent: number; 
+    transactions: Transaction[];
+    isConnected: boolean;
+  }) => void; // Add this to receive data from tracker
 }
 
 const defaultBNPLs: BNPL[] = [
@@ -88,75 +94,133 @@ const defaultMonthlyTrend = [
   { label: 'Mar', val: 620, active: true },
 ];
 
+// Default empty state (no bank connected)
+const getDefaultData = (monthlyBudget: number): FinancialData => ({
+  balance: 0,
+  moneyIn: 0,
+  moneyOut: 0,
+  monthlySpent: 0,
+  monthlyBudget: monthlyBudget,
+  spendPct: 0,
+  isBankConnected: false, // Initially not connected
+  debtRisk: 'LOW',
+  debtScore: 0,
+  bnplCount: 0,
+  bnpls: [],
+  goals: GOALS.map(g => ({ ...g, id: g.id.toString() })),
+  transactions: [],
+  aiTip: "Connect your bank account to see personalized insights.",
+  monthlyTrend: defaultMonthlyTrend.map(t => ({ ...t, val: 0 })), // Zero out the trend data
+});
+
 const FinancialDataContext = createContext<FinancialDataContextType | undefined>(undefined);
 
 export const FinancialDataProvider = ({ children }: { children: React.ReactNode }) => {
   const { profile } = useUserProfile();
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<FinancialData>({
-    balance: 12004,
-    moneyIn: 14000,
-    moneyOut: 1996,
-    monthlySpent: 620,
-    monthlyBudget: profile?.monthly_budget || 900,
-    spendPct: 68,
-    debtRisk: 'MEDIUM',
-    debtScore: 52,
-    bnplCount: 2,
-    bnpls: defaultBNPLs,
-    goals: GOALS.map(g => ({ ...g, id: g.id.toString() })), // Ensure IDs are strings
-    transactions: EXPENSES.map(e => ({ ...e, id: e.id.toString() })),
-    aiTip: "Cooking and eating in will help you save more money. You're spending $89 more on food this month vs last month.",
-    monthlyTrend: defaultMonthlyTrend,
-  });
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<FinancialData>(() => 
+    getDefaultData(profile?.monthly_budget || 5000)
+  );
 
   // Update budget when profile changes
   useEffect(() => {
-    if (profile?.monthly_budget && profile.monthly_budget !== data.monthlyBudget) {
+    if (profile?.monthly_budget) {
       setData(prev => ({
         ...prev,
-        monthlyBudget: profile.monthly_budget || 900,
-        spendPct: Math.round((prev.monthlySpent / (profile.monthly_budget || 900)) * 100)
+        monthlyBudget: profile.monthly_budget,
+        spendPct: prev.isBankConnected ? Math.round((prev.monthlySpent / profile.monthly_budget) * 100) : 0
       }));
     }
   }, [profile]);
 
+  // This function will be called by TrackerPage when bank is connected
+  const updateFromTracker = (trackerData: { 
+    totalSpent: number; 
+    transactions: Transaction[];
+    isConnected: boolean;
+  }) => {
+    if (trackerData.isConnected) {
+      // Bank is connected - update with real data
+      setData(prev => ({
+        ...prev,
+        isBankConnected: true,
+        monthlySpent: trackerData.totalSpent,
+        transactions: trackerData.transactions,
+        spendPct: Math.round((trackerData.totalSpent / prev.monthlyBudget) * 100),
+        // Update moneyOut to match spending
+        moneyOut: trackerData.totalSpent,
+        // Update balance (assuming moneyIn remains constant for demo)
+        balance: (prev.moneyIn || 14000) - trackerData.totalSpent,
+        // Update AI tip based on real data
+        aiTip: generateAITip(trackerData.totalSpent, prev.monthlyBudget, trackerData.transactions),
+        // Update monthly trend with real data if available
+        monthlyTrend: updateMonthlyTrend(trackerData.transactions),
+      }));
+
+      // Store transactions in localStorage for persistence
+      try {
+        const trackerUserId = localStorage.getItem('tracker_user_id');
+        if (trackerUserId) {
+          localStorage.setItem(
+            `financial-data-${trackerUserId}`, 
+            JSON.stringify({
+              totalSpent: trackerData.totalSpent,
+              transactions: trackerData.transactions
+            })
+          );
+        }
+      } catch (error) {
+        console.error('Error storing financial data:', error);
+      }
+    } else {
+      // Bank is not connected - reset to default
+      setData(prev => ({
+        ...getDefaultData(prev.monthlyBudget),
+        goals: prev.goals, // Keep goals
+      }));
+    }
+  };
+
+  // Helper function to generate AI tip based on real data
+  const generateAITip = (totalSpent: number, budget: number, transactions: Transaction[]): string => {
+    if (totalSpent === 0) {
+      return "Start tracking your spending to get personalized insights!";
+    }
+    
+    const percentage = (totalSpent / budget) * 100;
+    
+    if (percentage > 80) {
+      return `You've used ${percentage.toFixed(0)}% of your budget. Consider reducing non-essential spending for the rest of the month.`;
+    } else if (percentage > 50) {
+      return `You're at ${percentage.toFixed(0)}% of your budget. You're on track for a balanced month!`;
+    } else {
+      return `Great job! You've only used ${percentage.toFixed(0)}% of your budget. Keep up the good work!`;
+    }
+  };
+
+  // Helper function to update monthly trend
+  const updateMonthlyTrend = (transactions: Transaction[]): typeof defaultMonthlyTrend => {
+    // This is a simplified version - you'd want to group by month properly
+    const currentMonth = new Date().getMonth();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    return defaultMonthlyTrend.map((item, index) => ({
+      ...item,
+      val: index === 5 ? Math.round(transactions.reduce((sum, t) => sum + t.amount, 0)) : item.val,
+      active: index === 5,
+    }));
+  };
+
   const refreshData = async () => {
     setLoading(true);
     try {
-      // Here you would fetch from your API
-      // const response = await fetch('/api/financial-data');
-      // const freshData = await response.json();
-      // setData(freshData);
-      
-      // For now, just simulate a refresh
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Update with any new calculations
-      setData(prev => ({
-        ...prev,
-        spendPct: Math.round((prev.monthlySpent / prev.monthlyBudget) * 100),
-        debtScore: calculateDebtScore(prev.bnpls, prev.monthlyBudget),
-        debtRisk: calculateDebtRisk(prev.bnpls, prev.monthlyBudget),
-      }));
     } catch (error) {
       console.error('Error refreshing financial data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const calculateDebtScore = (bnpls: BNPL[], budget: number): number => {
-    const totalDebt = bnpls.reduce((sum, b) => sum + b.amount, 0);
-    const ratio = (totalDebt / budget) * 100;
-    return Math.min(100, Math.round(ratio * 1.8));
-  };
-
-  const calculateDebtRisk = (bnpls: BNPL[], budget: number): 'LOW' | 'MEDIUM' | 'HIGH' => {
-    const score = calculateDebtScore(bnpls, budget);
-    if (score <= 30) return 'LOW';
-    if (score <= 60) return 'MEDIUM';
-    return 'HIGH';
   };
 
   const updateGoal = (goalId: string, savedAmount: number) => {
@@ -169,18 +233,24 @@ export const FinancialDataProvider = ({ children }: { children: React.ReactNode 
   };
 
   const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
+    // This should only be used for manual cash transactions
     const newTransaction: Transaction = {
       ...transaction,
       id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
     
-    setData(prev => ({
-      ...prev,
-      transactions: [newTransaction, ...prev.transactions],
-      // Update monthly spent
-      monthlySpent: prev.monthlySpent + transaction.amount,
-      spendPct: Math.round(((prev.monthlySpent + transaction.amount) / prev.monthlyBudget) * 100),
-    }));
+    setData(prev => {
+      const newMonthlySpent = prev.monthlySpent + transaction.amount;
+      
+      return {
+        ...prev,
+        transactions: [newTransaction, ...prev.transactions],
+        monthlySpent: newMonthlySpent,
+        spendPct: Math.round((newMonthlySpent / prev.monthlyBudget) * 100),
+        moneyOut: newMonthlySpent,
+        balance: (prev.moneyIn || 14000) - newMonthlySpent,
+      };
+    });
   };
 
   return (
@@ -190,6 +260,7 @@ export const FinancialDataProvider = ({ children }: { children: React.ReactNode 
       loading,
       updateGoal,
       addTransaction,
+      updateFromTracker, // Expose this function
     }}>
       {children}
     </FinancialDataContext.Provider>

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { User, DollarSign, Bell, Shield, LogOut, ChevronRight, Check, Moon, Sun, Palette } from 'lucide-react';
 import { useCurrency, CURRENCIES, type CurrencyCode } from '@/contexts/CurrencyContext';
 import { useTheme, type ThemeColor } from '@/contexts/ThemeContext';
+import { useFinancialData } from '@/contexts/FinancialDataContext'; // Add this import
+import { useUserProfile } from '@/contexts/UserProfileContext'; // Add this import
 
 const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
   { color: 'green', label: 'Green', hsl: 'hsl(162,100%,39%)' },
@@ -10,22 +12,24 @@ const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
   { color: 'red', label: 'Red', hsl: 'hsl(0,72%,51%)' },
 ];
 
-// Dummy user data
-const DUMMY_USER = {
-  name: 'User',
-  email: 'user@gmail.com',
-  phone: '+60 12-345 6789',
-  plan: 'Free Plan',
-  memberSince: 'March 2026',
-  monthlyBudget: 900,
-};
-
 const SettingsPage = () => {
   const { currency, setCurrencyCode } = useCurrency();
   const { darkMode, toggleDarkMode, themeColor, setThemeColor } = useTheme();
+  const { data: financialData } = useFinancialData(); // Get financial data
+  const { profile } = useUserProfile(); // Get user profile
   
   const [notifications, setNotifications] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Use real user data from profile
+  const userData = {
+    name: profile?.full_name || 'User',
+    email: profile?.email || 'user@gmail.com',
+    phone: profile?.phone || '+60 12-345 6789',
+    plan: 'Free Plan',
+    memberSince: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'March 2026',
+    monthlyBudget: profile?.monthly_budget || 5000,
+  };
 
   const handleCurrencyChange = async (code: CurrencyCode) => {
     setSaving(true);
@@ -34,10 +38,8 @@ const SettingsPage = () => {
     setTimeout(() => setSaving(false), 500);
   };
 
-  // Format date
-  const formatDate = (dateString?: string) => {
-    return dateString || 'N/A';
-  };
+  // Calculate spending percentage
+  const spentPercentage = Math.min(Math.round((financialData.monthlySpent / userData.monthlyBudget) * 100), 100);
 
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
@@ -51,20 +53,20 @@ const SettingsPage = () => {
             </div>
           </div>
           <div className="flex-1">
-            <p className="text-[15px] font-bold text-foreground">{DUMMY_USER.name}</p>
-            <p className="text-[12px] text-muted-foreground">{DUMMY_USER.email}</p>
-            <p className="text-[11px] text-primary font-semibold mt-1">{DUMMY_USER.plan}</p>
+            <p className="text-[15px] font-bold text-foreground">{userData.name}</p>
+            <p className="text-[12px] text-muted-foreground">{userData.email}</p>
+            <p className="text-[11px] text-primary font-semibold mt-1">{userData.plan}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mt-1">
           <div className="bg-muted rounded-xl p-3">
             <p className="text-[10px] text-muted-foreground mb-0.5">Phone</p>
-            <p className="text-[12px] font-semibold text-foreground">{DUMMY_USER.phone}</p>
+            <p className="text-[12px] font-semibold text-foreground">{userData.phone}</p>
           </div>
           <div className="bg-muted rounded-xl p-3">
             <p className="text-[10px] text-muted-foreground mb-0.5">Member Since</p>
-            <p className="text-[12px] font-semibold text-foreground">{DUMMY_USER.memberSince}</p>
+            <p className="text-[12px] font-semibold text-foreground">{userData.memberSince}</p>
           </div>
         </div>
       </div>
@@ -107,24 +109,36 @@ const SettingsPage = () => {
         )}
       </div>
 
-      {/* Budget Overview */}
+      {/* Budget Overview - Now with real data */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">Budget Overview</p>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">Monthly Budget</span>
           <span className="text-sm font-bold text-foreground">
-            {currency.symbol}{DUMMY_USER.monthlyBudget.toFixed(2)}
+            {currency.symbol}{userData.monthlyBudget.toFixed(2)}
           </span>
         </div>
-        <div className="h-2 bg-border rounded-full overflow-hidden">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-muted-foreground">Spent this month</span>
+          <span className="text-sm font-semibold text-foreground">
+            {currency.symbol}{financialData.monthlySpent.toFixed(2)}
+          </span>
+        </div>
+        <div className="h-2 bg-border rounded-full overflow-hidden mb-1">
           <div 
-            className="h-full rounded-full bg-primary transition-all duration-700"
-            style={{ width: '68%' }}
+            className={`h-full rounded-full transition-all duration-700 ${
+              spentPercentage >= 100 ? 'bg-destructive' : 
+              spentPercentage >= 80 ? 'bg-warning' : 'bg-primary'
+            }`}
+            style={{ width: `${spentPercentage}%` }}
           />
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2">
-          $620 spent of $900 budget
-        </p>
+        <div className="flex justify-between text-[10px]">
+          <span className="text-muted-foreground">Used: {spentPercentage}%</span>
+          <span className="text-muted-foreground">
+            Remaining: {currency.symbol}{(userData.monthlyBudget - financialData.monthlySpent).toFixed(2)}
+          </span>
+        </div>
       </div>
 
       {/* Preferences */}
@@ -227,13 +241,13 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      {/* Session Info */}
+      {/* Session Info - Now with real user ID */}
       <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
         <p className="text-[10px] text-muted-foreground text-center">
-          Signed in as <span className="text-foreground font-medium">{DUMMY_USER.email}</span>
+          Signed in as <span className="text-foreground font-medium">{userData.email}</span>
         </p>
         <p className="text-[9px] text-muted-foreground text-center mt-1">
-          User ID: user123
+          User ID: {profile?.id || 'user123'}
         </p>
       </div>
 
