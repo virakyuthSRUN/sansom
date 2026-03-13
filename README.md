@@ -409,6 +409,7 @@ This project uses the following AI tools in compliance with BorNEO HackWknd 26 A
 |------|------|
 | 🔗 GitHub Repository | https://github.com/virakyuthSRUN/sansom |
 | 📄 Project Report + Pitch Video | [Google Drive](https://drive.google.com/drive/folders/1ejBW92yZMl0dSF5Gmgbv8dza4eMhFXm0?usp=sharing) |
+| 📄 demo + pitching video | [Youtube](https://youtu.be/KDchzWbo_nI) |
 
 ---
 
