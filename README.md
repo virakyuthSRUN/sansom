@@ -188,8 +188,8 @@ You need **two** `.env` files — one at the root for the frontend, one inside `
 Create this file at the **root** of the project:
 
 ```env
-VITE_API_URL=http://localhost:3000
-VITE_ML_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://wkbltllppoozpgvrgjfg.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrYmx0bGxwcG9venBndnJnamZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTQxMDcsImV4cCI6MjA4ODgzMDEwN30.fEERpIYZGVNrQRt6gBLYZQtKxIT67-f0X3PZIp75KmE
 ```
 
 #### `sansom/backend/.env` — Backend
@@ -197,12 +197,20 @@ VITE_ML_URL=http://localhost:8000
 Create this file inside the `backend/` folder:
 
 ```env
+GEMINI_API_KEY=AIzaSyDePEzOpzTgClzOeaoDG3vy-pUHZkDSVI4
 PORT=3000
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_KEY=your_supabase_anon_key
-TELLER_APPLICATION_ID=your_teller_app_id
-TELLER_ENVIRONMENT=sandbox
+NODE_ENV=development
+GROQ_API_KEY=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
+
+# Teller Configuration
+TELLER_APP_ID=app_ppnhqv8vomq54misqa000   
+TELLER_CERT_PATH=./certs/certificate.pem
+TELLER_KEY_PATH=./certs/private_key.pem
+TELLER_ENVIRONMENT=sandbox         
+
+# Supabase Configuration
+SUPABASE_URL=https://wkbltllppoozpgvrgjfg.supabase.co
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrYmx0bGxwcG9venBndnJnamZnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzI1NDEwNywiZXhwIjoyMDg4ODMwMTA3fQ.4SbL77yB7qY_8GQe9ogIoRaaw53SoUfRerzzUqak8SY
 ```
 
 > ⚠️ Never commit `.env` files to GitHub. Both are already in `.gitignore`.
