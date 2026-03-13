@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-03-13T22:02:27.591650",
+  "currency": "USD",
+  "market": "Cambodia (Phnom Penh)",
+  "training_samples": 2000,
+  "personas": {
+    "broke": {
+      "income_range": "$80\u2013$200/month",
+      "description": 1
+    },
+    "allowance": {
+      "income_range": "$200\u2013$350/month",
+      "description": 2
+    },
+    "part_time": {
+      "income_range": "$350\u2013$550/month",
+      "description": 3
+    },
+    "fresh_grad": {
+      "income_range": "$500\u2013$900/month",
+      "description": 3
+    },
+    "young_prof": {
+      "income_range": "$900\u2013$1800/month",
+      "description": 4
+    }
+  },
+  "model_1": {
+    "name": "Spending Predictor",
+    "algorithm": "XGBoost",
+    "features": [
+      "total_spent_so_far",
+      "day_of_month",
+      "avg_daily_spend",
+      "food_spend",
+      "transport_spend",
+      "shopping_spend",
+      "bnpl_spend",
+      "entertainment_spend",
+      "days_remaining",
+      "budget",
+      "spend_ratio"
+    ],
+    "test_mae_usd": 40.25,
+    "r2_score": 0.9879,
+    "cv_mae_usd": 78.22
+  },
+  "model_2": {
+    "name": "Debt Risk Scorer",
+    "algorithm": "XGBoost",
+    "features": [
+      "income",
+      "bnpl_total",
+      "num_loans",
+      "savings",
+      "bnpl_ratio",
+      "savings_ratio",
+      "spend_ratio",
+      "has_bnpl"
+    ],
+    "test_mae_points": 2.92,
+    "r2_score": 0.9717,
+    "cv_mae_points": 3.17,
+    "tier_accuracy_pct": 89.0,
+    "tiers": {
+      "0\u201319": "SAFE",
+      "20\u201339": "LOW",
+      "40\u201359": "MEDIUM",
+      "60\u201379": "HIGH",
+      "80\u2013100": "CRITICAL"
+    }
+  }
+}
