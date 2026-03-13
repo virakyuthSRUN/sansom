@@ -12,8 +12,8 @@ const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
 
 // Dummy user data
 const DUMMY_USER = {
-  name: 'Hieng Dara',
-  email: 'dara@gmail.com',
+  name: 'User',
+  email: 'user@gmail.com',
   phone: '+60 12-345 6789',
   plan: 'Free Plan',
   memberSince: 'March 2026',
@@ -233,7 +233,7 @@ const SettingsPage = () => {
           Signed in as <span className="text-foreground font-medium">{DUMMY_USER.email}</span>
         </p>
         <p className="text-[9px] text-muted-foreground text-center mt-1">
-          User ID: darahieng12
+          User ID: user123
         </p>
       </div>
 

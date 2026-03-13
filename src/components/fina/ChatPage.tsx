@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Send, Trash2 } from 'lucide-react';
+import { useFinancialData } from '@/contexts/FinancialDataContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 // Define the API response type
 interface ChatResponse {
@@ -15,41 +17,98 @@ interface Msg {
 
 const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
 
-// Dummy welcome message
-const WELCOME_MESSAGE = "Hi Dara! I'm SANSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?";
+// Generate welcome message with personalized data
+const generateWelcomeMessage = (name: string, monthlySpent: number, monthlyBudget: number, debtRisk: string) => {
+  const spentPct = Math.round((monthlySpent / monthlyBudget) * 100);
+  
+  return `Hi ${name}! I'm SANSOM, your AI financial advisor. 
+
+Here's your current snapshot:
+• You've spent ${formatCurrency(monthlySpent)} this month (${spentPct}% of your $${monthlyBudget} budget)
+• Your debt risk level is ${debtRisk}
+
+I can help you budget, track spending, or check if you can afford something. What's on your mind?`;
+};
+
+// Helper function for formatting (since we can't use hooks outside components)
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 const CHAT_STORAGE_KEY = 'sansom-chat-history';
 
+// Generate a random 3-digit number for the user ID (same as TrackerPage)
+const generateRandomUserId = () => {
+  const randomNum = Math.floor(Math.random() * 900) + 100;
+  return `student-${randomNum}`;
+};
+
+// Store the generated ID in localStorage to persist across sessions
+const getOrCreateUserId = () => {
+  const STORAGE_KEY = 'chat_user_id';
+  let userId = localStorage.getItem(STORAGE_KEY);
+  
+  if (!userId) {
+    userId = generateRandomUserId();
+    localStorage.setItem(STORAGE_KEY, userId);
+    console.log('🆕 Generated new chat user ID:', userId);
+  }
+  
+  return userId;
+};
+
 const ChatPage = () => {
+  const { data: financialData } = useFinancialData();
+  const { profile } = useUserProfile();
+  
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  
+  // Use the same user ID system as TrackerPage
+  const [userId] = useState(() => getOrCreateUserId());
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+  // Generate personalized welcome message based on actual data
+  const getPersonalizedWelcome = () => {
+    const name = profile?.full_name?.split(' ')[0] || 'User';
+    return generateWelcomeMessage(
+      name,
+      financialData.monthlySpent,
+      financialData.monthlyBudget,
+      financialData.debtRisk
+    );
+  };
+
   // Load chat history from localStorage on mount
   useEffect(() => {
-    const savedChats = localStorage.getItem(CHAT_STORAGE_KEY);
+    const savedChats = localStorage.getItem(`${CHAT_STORAGE_KEY}-${userId}`);
     if (savedChats) {
       try {
         const parsed = JSON.parse(savedChats);
         setMsgs(parsed);
       } catch (e) {
         console.error('Failed to parse saved chat history:', e);
-        setMsgs([{ role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() }]);
+        setMsgs([{ role: 'ai', text: getPersonalizedWelcome(), timestamp: Date.now() }]);
       }
     } else {
-      setMsgs([{ role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() }]);
+      setMsgs([{ role: 'ai', text: getPersonalizedWelcome(), timestamp: Date.now() }]);
     }
-  }, []);
+  }, [userId, financialData.monthlySpent, financialData.monthlyBudget, financialData.debtRisk]); // Re-run if financial data changes
 
   // Save to localStorage whenever messages change
   useEffect(() => {
     if (msgs.length > 0) {
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs));
+      localStorage.setItem(`${CHAT_STORAGE_KEY}-${userId}`, JSON.stringify(msgs));
     }
-  }, [msgs]);
+  }, [msgs, userId]);
 
   const send = async (text: string) => {
     if (!text.trim()) return;
@@ -60,14 +119,23 @@ const ChatPage = () => {
     setTyping(true);
 
     try {
+      // Include financial context in the request
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: 'student-123',
-          message: text
+          userId: userId,
+          message: text,
+          context: {
+            monthlySpent: financialData.monthlySpent,
+            monthlyBudget: financialData.monthlyBudget,
+            debtRisk: financialData.debtRisk,
+            bnplCount: financialData.bnplCount,
+            recentTransactions: financialData.transactions.slice(0, 5),
+            goals: financialData.goals,
+          }
         })
       });
 
@@ -94,9 +162,9 @@ const ChatPage = () => {
 
   const clearHistory = () => {
     if (confirm('Are you sure you want to clear all chat history?')) {
-      const welcomeMsg: Msg = { role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() };
+      const welcomeMsg: Msg = { role: 'ai', text: getPersonalizedWelcome(), timestamp: Date.now() };
       setMsgs([welcomeMsg]);
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify([welcomeMsg]));
+      localStorage.setItem(`${CHAT_STORAGE_KEY}-${userId}`, JSON.stringify([welcomeMsg]));
     }
   };
 
@@ -129,6 +197,14 @@ const ChatPage = () => {
             </button>
           )}
         </div>
+        {/* Show current financial snapshot in header */}
+        <div className="mt-2 flex gap-2 text-[10px] text-muted-foreground">
+          <span>Budget: {formatCurrency(financialData.monthlySpent)} / {formatCurrency(financialData.monthlyBudget)}</span>
+          <span>•</span>
+          <span>Debt Risk: {financialData.debtRisk}</span>
+          <span>•</span>
+          <span>User: {userId}</span>
+        </div>
       </div>
 
       {/* Messages */}
@@ -149,7 +225,7 @@ const ChatPage = () => {
             >
               {m.text}
               {m.timestamp && (
-                <div className="text-[8px]  mt-1 opacity-50">
+                <div className="text-[8px] mt-1 opacity-50">
                   {new Date(m.timestamp).toLocaleTimeString()}
                 </div>
               )}

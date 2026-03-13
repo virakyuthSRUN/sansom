@@ -26,8 +26,8 @@ const PAGE_TITLES: Record<PageId, string> = {
 
 // Dummy user data
 const DUMMY_USER = {
-  name: 'Hieng Dara',
-  email: 'dara@sansom.app',
+  name: 'User',
+  email: 'user@gmail.com',
   avatar: null,
 };
 

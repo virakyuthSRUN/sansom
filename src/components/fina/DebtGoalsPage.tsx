@@ -1,16 +1,10 @@
 import { useState } from 'react';
-import { GOALS as INITIAL_GOALS } from '@/lib/constants';
+import { useFinancialData } from '@/contexts/FinancialDataContext';
 import RingChart from './RingChart';
 import DynamicIcon from './DynamicIcon';
 import AddGoalDialog from './AddGoalDialog';
 import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
-
-/* ── Dummy BNPL data ── */
-const BNPLS = [
-  { name: 'Atome', platform: 'Shopee', amount: 300, monthly: 100, rate: 18, status: 'Active', risk: 'MEDIUM' as const },
-  { name: 'GrabPay Later', platform: 'Grab', amount: 150, monthly: 75, rate: 24, status: 'Active', risk: 'HIGH' as const },
-];
 
 const getColor = (s: number) => s <= 30 ? '#00c896' : s <= 60 ? '#ffb300' : '#ff4757';
 const getLabel = (s: number) => s <= 30 ? 'LOW RISK' : s <= 60 ? 'MEDIUM RISK' : 'HIGH RISK';
@@ -26,11 +20,10 @@ type Tab = 'debt' | 'goals';
 
 const DebtGoalsPage = () => {
   const { format, currency } = useCurrency();
-  const score = 52;
+  const { data, updateGoal } = useFinancialData();
   const [tab, setTab] = useState<Tab>('debt');
   const [checked, setChecked] = useState({ income: '', savings: '', bnpl: '', loans: '' });
   const [simScore, setSimScore] = useState<number | null>(null);
-  const [goals, setGoals] = useState(INITIAL_GOALS);
   const [showAddGoal, setShowAddGoal] = useState(false);
 
   const simulate = () => {
@@ -44,9 +37,11 @@ const DebtGoalsPage = () => {
   const addGoal = (newGoal: any) => {
     const goalWithId = {
       ...newGoal,
-      id: Date.now().toString(),
+      id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
-    setGoals(prev => [...prev, goalWithId]);
+    // This would need to be implemented in the context
+    // For now, just show the dialog
+    setShowAddGoal(false);
   };
 
   return (
@@ -77,14 +72,14 @@ const DebtGoalsPage = () => {
           {/* Main Score */}
           <div
             className="bg-card rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-5 border-2"
-            style={{ background: getBg(score), borderColor: `${getColor(score)}30` }}
+            style={{ background: getBg(data.debtScore), borderColor: `${getColor(data.debtScore)}30` }}
           >
-            <RingChart pct={score} size={96} color={getColor(score)} bg="#e8e8e8" stroke={9} label={`${score}`} sub="/ 100" />
+            <RingChart pct={data.debtScore} size={96} color={getColor(data.debtScore)} bg="#e8e8e8" stroke={9} label={`${data.debtScore}`} sub="/ 100" />
             <div className="flex-1 text-center sm:text-left">
               <p className="text-[11px] text-muted-foreground font-semibold mb-1">YOUR DEBT RISK SCORE</p>
-              <p className="text-[22px] font-extrabold font-display" style={{ color: getColor(score) }}>{getLabel(score)}</p>
+              <p className="text-[22px] font-extrabold font-display" style={{ color: getColor(data.debtScore) }}>{getLabel(data.debtScore)}</p>
               <p className="text-xs text-foreground leading-relaxed mt-1.5">
-                You have 2 active BNPL plans. Your debt-to-income ratio is <b>25%</b> — approaching the danger zone of 30%.
+                You have {data.bnplCount} active BNPL plans. Your debt-to-income ratio is <b>25%</b> — approaching the danger zone of 30%.
               </p>
             </div>
           </div>
@@ -92,8 +87,8 @@ const DebtGoalsPage = () => {
           {/* Active BNPLs */}
           <div className="bg-card rounded-2xl p-4 shadow-sm">
             <p className="text-[13px] font-bold text-foreground mb-3.5">Active BNPL / Loans</p>
-            {BNPLS.map((b, i) => (
-              <div key={i} className={`bg-muted rounded-xl p-3.5 ${i < BNPLS.length - 1 ? 'mb-2.5' : ''}`}>
+            {data.bnpls.map((b, i) => (
+              <div key={i} className={`bg-muted rounded-xl p-3.5 ${i < data.bnpls.length - 1 ? 'mb-2.5' : ''}`}>
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <p className="text-[13px] font-bold text-foreground">{b.name}</p>
@@ -184,12 +179,12 @@ const DebtGoalsPage = () => {
               <Sparkles className="w-3.5 h-3.5" /> AI SAVINGS PLAN
             </p>
             <p className="text-[13px] leading-relaxed">
-              Save <b>{format(200)}/month</b> across your {goals.length} goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
+              Save <b>{format(200)}/month</b> across your {data.goals.length} goals. At this rate, your Emergency Fund is reached by <b>June 2026</b>!
             </p>
           </div>
 
           {/* Goals */}
-          {goals.map(g => {
+          {data.goals.map(g => {
             const pct = Math.round((g.saved / g.target) * 100);
             const remaining = g.target - g.saved;
             const months = Math.ceil(remaining / 200);

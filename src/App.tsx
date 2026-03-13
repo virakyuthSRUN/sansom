@@ -5,7 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { GoalsProvider } from "@/contexts/GoalsContext"; // Add this back
+import { GoalsProvider } from "@/contexts/GoalsContext";
+import { AuthProvider } from "@/contexts/AuthContext"; // Add this import
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import { FinancialDataProvider } from "@/contexts/FinancialDataContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -15,18 +18,24 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <CurrencyProvider>
-        <GoalsProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </GoalsProvider>
+        <AuthProvider> {/* Add AuthProvider here */}
+          <UserProfileProvider>
+            <GoalsProvider>
+              <FinancialDataProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </FinancialDataProvider>
+            </GoalsProvider>
+          </UserProfileProvider>
+        </AuthProvider>
       </CurrencyProvider>
     </ThemeProvider>
   </QueryClientProvider>

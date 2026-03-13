@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFinancialData } from '@/contexts/FinancialDataContext';
 import DynamicIcon from './DynamicIcon';
 import { Bot, AlertTriangle, Plus, X, RefreshCw, Banknote, Unlink, CheckCircle, XCircle } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -27,11 +28,35 @@ const CAT_ICONS: Record<string, { icon: string; color: string }> = {
   Other: { icon: 'Wallet', color: '#6b7280' },
 };
 
-const USER_ID = 'student-124';
+// Generate a random 3-digit number for the user ID
+const generateRandomUserId = () => {
+  const randomNum = Math.floor(Math.random() * 900) + 100;
+  return `student-${randomNum}`;
+};
+
+// Store the generated ID in localStorage to persist across sessions
+const getOrCreateUserId = () => {
+  const STORAGE_KEY = 'tracker_user_id';
+  let userId = localStorage.getItem(STORAGE_KEY);
+  
+  if (!userId) {
+    userId = generateRandomUserId();
+    localStorage.setItem(STORAGE_KEY, userId);
+    console.log('🆕 Generated new user ID:', userId);
+  } else {
+    console.log('🔄 Using existing user ID:', userId);
+  }
+  
+  return userId;
+};
 
 const TrackerPage = () => {
   const { format } = useCurrency();
   const queryClient = useQueryClient();
+  const { data: financialData, addTransaction, refreshData } = useFinancialData();
+  
+  // Initialize user ID once when component mounts
+  const [userId] = useState(() => getOrCreateUserId());
   
   // Local state
   const [activeFilter, setActiveFilter] = useState('All');
@@ -42,17 +67,22 @@ const TrackerPage = () => {
   
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+  // Log the user ID for debugging
+  useEffect(() => {
+    console.log('🔑 Current user ID:', userId);
+  }, [userId]);
+
   // Query to check connection status
   const { 
     data: connectionData,
     isLoading: connectionLoading,
     refetch: refetchConnection
   } = useQuery({
-    queryKey: ['bankConnection', USER_ID],
+    queryKey: ['bankConnection', userId],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/teller/status/${USER_ID}`);
+      const response = await fetch(`${API_BASE_URL}/api/teller/status/${userId}`);
       const data = await response.json();
-      console.log('📡 Connection status:', data);
+      console.log(`📡 Connection status for ${userId}:`, data);
       return data;
     },
     staleTime: 5 * 60 * 1000,
@@ -66,12 +96,12 @@ const TrackerPage = () => {
     isFetching,
     refetch: refetchTransactions
   } = useQuery({
-    queryKey: ['bankTransactions', USER_ID],
+    queryKey: ['bankTransactions', userId],
     queryFn: async () => {
-      console.log('📡 Fetching transactions...');
-      const response = await fetch(`${API_BASE_URL}/api/teller/transactions/${USER_ID}`);
+      console.log(`📡 Fetching transactions for ${userId}...`);
+      const response = await fetch(`${API_BASE_URL}/api/teller/transactions/${userId}`);
       const data = await response.json();
-      console.log('📡 Transactions response:', data);
+      console.log(`📡 Transactions response for ${userId}:`, data);
       
       if (data.success) {
         const formatted = data.transactions?.map((t: any) => ({
@@ -106,7 +136,37 @@ const TrackerPage = () => {
 
   const isConnected = connectionData?.connected === true;
   const bankName = connectionData?.bankName || bankData?.bankName || '';
+  
+  // Combine bank transactions with existing financial data transactions and cash entries
   const bankTransactions = bankData?.transactions || [];
+  const allTransactions = useMemo(() => {
+    // Use financial data transactions as base, then add bank transactions and cash entries
+    const baseTransactions = financialData.transactions || [];
+    
+    // Create a Set of existing transaction IDs to avoid duplicates
+    const existingIds = new Set(baseTransactions.map(t => t.id));
+    
+    // Add bank transactions that aren't already in the list
+    const newBankTransactions = bankTransactions.filter(t => !existingIds.has(t.id));
+    
+    // Add cash entries
+    const allCashEntries = cashEntries.filter(t => !existingIds.has(t.id));
+    
+    return [...newBankTransactions, ...allCashEntries, ...baseTransactions];
+  }, [bankTransactions, cashEntries, financialData.transactions]);
+
+  const filteredTransactions = activeFilter === 'All' 
+    ? allTransactions 
+    : allTransactions.filter(t => t.cat === activeFilter);
+
+  // Calculate category spend from all transactions
+  const categorySpend = allTransactions.reduce((acc: Record<string, number>, t: any) => {
+    const cat = t.cat || 'Other';
+    acc[cat] = (acc[cat] || 0) + t.amount;
+    return acc;
+  }, {});
+
+  const totalSpent = allTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
 
   const loadTellerScript = () => {
     return new Promise((resolve, reject) => {
@@ -152,7 +212,7 @@ const TrackerPage = () => {
               body: JSON.stringify({
                 accessToken: enrollment.accessToken,
                 enrollment: enrollment.enrollment,
-                userId: USER_ID
+                userId: userId
               })
             });
             
@@ -162,6 +222,7 @@ const TrackerPage = () => {
             if (callbackData.success) {
               await refetchConnection();
               await refetchTransactions();
+              await refreshData(); // Refresh dashboard data
             }
           } catch (error) {
             console.error('Callback error:', error);
@@ -188,9 +249,10 @@ const TrackerPage = () => {
 
   const disconnectBank = async () => {
     try {
-      await fetch(`${API_BASE_URL}/api/teller/disconnect/${USER_ID}`, { method: 'POST' });
-      queryClient.removeQueries({ queryKey: ['bankTransactions', USER_ID] });
+      await fetch(`${API_BASE_URL}/api/teller/disconnect/${userId}`, { method: 'POST' });
+      queryClient.removeQueries({ queryKey: ['bankTransactions', userId] });
       await refetchConnection();
+      await refreshData(); // Refresh dashboard data
     } catch (error) {
       console.error('Error disconnecting bank:', error);
     }
@@ -198,64 +260,55 @@ const TrackerPage = () => {
 
   const addCashTransaction = () => {
     if (!newEntry.name.trim() || !newEntry.amount) return;
+    
     const catInfo = CAT_ICONS[newEntry.cat] || CAT_ICONS.Other;
+    const amount = parseFloat(newEntry.amount);
+    
+    // Create a truly unique ID for cash transactions
+    const uniqueId = `cash-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
     const newCashEntry = {
-      id: Date.now(),
+      id: uniqueId,
       name: newEntry.name,
-      amount: parseFloat(newEntry.amount),
+      amount: amount,
       cat: newEntry.cat,
       date: 'Today',
       icon: catInfo.icon,
       color: catInfo.color,
       isCash: true,
     };
+    
+    // Add to local state
     setCashEntries(prev => [...prev, newCashEntry]);
+    
+    // Add to global financial data context (this will update dashboard)
+    addTransaction(newCashEntry);
+    
+    // Reset form
     setNewEntry({ name: '', amount: '', cat: 'Food' });
     setShowAddForm(false);
     
+    // Sync to backend
     fetch(`${API_BASE_URL}/api/transactions/manual`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId: USER_ID,
+        userId: userId,
         name: newEntry.name,
-        amount: parseFloat(newEntry.amount),
+        amount: amount,
         category: newEntry.cat,
       }),
     }).catch(err => console.error('Failed to sync cash transaction:', err));
   };
 
-  // Combine bank and cash transactions
-  const allTransactions = [
-    ...bankTransactions,
-    ...cashEntries
-  ];
-
-  const filteredTransactions = activeFilter === 'All' 
-    ? allTransactions 
-    : allTransactions.filter(t => t.cat === activeFilter);
-
-  // Calculate category spend from bank transactions only
-  const categorySpend = bankTransactions.reduce((acc: Record<string, number>, t: any) => {
-    const cat = t.cat || 'Other';
-    acc[cat] = (acc[cat] || 0) + t.amount;
-    return acc;
-  }, {});
-
-  // Ensure all categories have at least a value of 0 for display
-  const allCategoriesWithValues = CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = categorySpend[cat] || 0;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const totalSpent = bankTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
-
   const getAIPrediction = () => {
-    if (!isConnected) return "Connect your bank to see AI-powered predictions.";
+    if (!isConnected && allTransactions.length === 0) {
+      return "Connect your bank or add transactions to see AI-powered predictions.";
+    }
     
     const dailyAvg = totalSpent / 30 || 0;
     const projectedTotal = dailyAvg * 30;
-    const budget = 900;
+    const budget = financialData.monthlyBudget || 900;
     const overUnder = projectedTotal - budget;
     
     if (overUnder > 0) {
@@ -265,6 +318,13 @@ const TrackerPage = () => {
     }
   };
 
+  // Option to reset user ID (useful for testing)
+  const resetUserId = () => {
+    const newId = generateRandomUserId();
+    localStorage.setItem('tracker_user_id', newId);
+    window.location.reload(); // Simple reload to reset all queries
+  };
+
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
       <div className="flex justify-between items-center">
@@ -272,7 +332,10 @@ const TrackerPage = () => {
         <div className="flex gap-2">
           {isConnected && (
             <button
-              onClick={() => refetchTransactions()}
+              onClick={() => {
+                refetchTransactions();
+                refreshData();
+              }}
               disabled={isFetching}
               className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center"
               title="Refresh bank transactions"
@@ -286,7 +349,20 @@ const TrackerPage = () => {
           >
             {showAddForm ? <X className="w-4 h-4 text-primary-foreground" /> : <Plus className="w-4 h-4 text-primary-foreground" />}
           </button>
+          {/* Optional: Add reset button for testing */}
+          <button
+            onClick={resetUserId}
+            className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center"
+            title="Reset User ID (Testing Only)"
+          >
+            <RefreshCw className="w-4 h-4 text-primary" />
+          </button>
         </div>
+      </div>
+
+      {/* Display current user ID for debugging (remove in production) */}
+      <div className="text-[10px] text-muted-foreground px-1">
+        User: {userId} · Budget: {format(financialData.monthlyBudget)}
       </div>
 
       {/* Bank Connection Status */}
@@ -348,6 +424,7 @@ const TrackerPage = () => {
               onChange={e => setNewEntry(p => ({ ...p, amount: e.target.value }))}
               placeholder="Amount"
               type="number"
+              step="0.01"
               className="w-full px-3 py-2.5 rounded-xl border-[1.5px] border-border text-[13px] text-foreground outline-none focus:border-primary transition-colors bg-card"
             />
             <div className="flex gap-1.5 flex-wrap">
@@ -385,7 +462,7 @@ const TrackerPage = () => {
         </p>
       </div>
 
-      {/* Category Breakdown - Always show all categories */}
+      {/* Category Breakdown */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">By Category</p>
         {CATEGORIES.map(cat => {
@@ -417,7 +494,7 @@ const TrackerPage = () => {
       </div>
 
       {/* Filters */}
-      {isConnected && allTransactions.length > 0 && (
+      {allTransactions.length > 0 && (
         <div className="flex gap-1.5 flex-wrap">
           {FILTERS.map(f => (
             <button
@@ -439,12 +516,12 @@ const TrackerPage = () => {
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         {connectionLoading ? (
           <div className="text-center py-8 text-muted-foreground">Checking connection...</div>
-        ) : !isConnected ? (
+        ) : !isConnected && allTransactions.length === 0 ? (
           <div className="text-center py-8">
             <Banknote className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-foreground mb-2">No Bank Connected</p>
+            <p className="text-sm text-foreground mb-2">No Transactions Yet</p>
             <p className="text-xs text-muted-foreground mb-4">
-              Connect your bank account to see your transactions
+              Connect your bank account or add a cash transaction
             </p>
             <button
               onClick={connectBank}
@@ -475,6 +552,11 @@ const TrackerPage = () => {
                       {t.pending && (
                         <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">
                           Pending
+                        </span>
+                      )}
+                      {t.isCash && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-accent/30 text-primary">
+                          Cash
                         </span>
                       )}
                     </div>
