@@ -148,12 +148,12 @@ const Dashboard = ({ setPage }: DashboardProps) => {
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <p className="text-xs font-bold text-primary">SANSAM's Tip</p>
+          <p className="text-xs font-bold text-primary">SANSOM's Tip</p>
         </div>
         <p className="text-[13px] text-foreground leading-relaxed">
           "{DUMMY_DATA.aiTip}"
         </p>
-        <p className="text-[11px] text-primary mt-2 font-semibold">Ask SANSAM more →</p>
+        <p className="text-[11px] text-primary mt-2 font-semibold">Ask SANSOM more →</p>
       </div>
 
       {/* Recent Transactions */}

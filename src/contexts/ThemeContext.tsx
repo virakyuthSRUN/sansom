@@ -51,8 +51,8 @@ const THEME_COLORS: Record<ThemeColor, { primary: string; primaryDark: string; a
 };
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('sansam-dark') === 'true');
-  const [themeColor, setThemeColorState] = useState<ThemeColor>(() => (localStorage.getItem('sansam-theme') as ThemeColor) || 'green');
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('sansom-dark') === 'true');
+  const [themeColor, setThemeColorState] = useState<ThemeColor>(() => (localStorage.getItem('sansom-theme') as ThemeColor) || 'green');
 
   useEffect(() => {
     const root = document.documentElement;
@@ -61,7 +61,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('sansam-dark', String(darkMode));
+    localStorage.setItem('sansom-dark', String(darkMode));
   }, [darkMode]);
 
   useEffect(() => {
@@ -74,7 +74,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     root.style.setProperty('--ring', colors.ring);
     root.style.setProperty('--success', colors.success);
     root.style.setProperty('--success-light', colors.successLight);
-    localStorage.setItem('sansam-theme', themeColor);
+    localStorage.setItem('sansom-theme', themeColor);
 
     // Update gradient
     const h = colors.primary.split(' ')[0];

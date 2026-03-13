@@ -24,12 +24,12 @@ import { GOALS as DEFAULT_GOALS } from '@/lib/constants';
 
 export const GoalsProvider = ({ children }: { children: React.ReactNode }) => {
   const [goals, setGoals] = useState<Goal[]>(() => {
-    const saved = localStorage.getItem('sansam-goals');
+    const saved = localStorage.getItem('sansom-goals');
     return saved ? JSON.parse(saved) : DEFAULT_GOALS;
   });
 
   useEffect(() => {
-    localStorage.setItem('sansam-goals', JSON.stringify(goals));
+    localStorage.setItem('sansom-goals', JSON.stringify(goals));
   }, [goals]);
 
   const addGoal = (goal: Omit<Goal, 'id'>) => {

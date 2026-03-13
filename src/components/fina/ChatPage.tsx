@@ -15,7 +15,7 @@ interface Msg {
 const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
 
 // Dummy welcome message
-const WELCOME_MESSAGE = "Hi Dara! I'm SANSAM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?";
+const WELCOME_MESSAGE = "Hi Dara! I'm SANSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?";
 
 const ChatPage = () => {
   const [msgs, setMsgs] = useState<Msg[]>([
@@ -80,8 +80,8 @@ const ChatPage = () => {
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <p className="text-[15px] font-bold text-foreground">SANSAM AI Advisor</p>
-            <p className="text-[11px] text-primary font-medium">● Online · Powered by SANSAM AI</p>
+            <p className="text-[15px] font-bold text-foreground">SANSOM AI Advisor</p>
+            <p className="text-[11px] text-primary font-medium">● Online · Powered by SANSOM AI</p>
           </div>
         </div>
       </div>
@@ -141,7 +141,7 @@ const ChatPage = () => {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send(input)}
-            placeholder="Ask SANSAM anything..."
+            placeholder="Ask SANSOM anything..."
             className="flex-1 px-3.5 py-3 rounded-xl border-[1.5px] border-border text-sm text-foreground outline-none focus:border-primary transition-colors bg-card"
           />
           <button
