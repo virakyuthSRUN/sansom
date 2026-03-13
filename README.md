@@ -401,13 +401,11 @@ This project uses the following AI tools in compliance with BorNEO HackWknd 26 A
 |------|------|
 | 🔗 GitHub Repository | https://github.com/virakyuthSRUN/sansom |
 | 📄 Project Report + Pitch Video | [Google Drive](https://drive.google.com/drive/folders/1ejBW92yZMl0dSF5Gmgbv8dza4eMhFXm0?usp=sharing) |
-| 🎬 Demo Video (YouTube Unlisted) | [YouTube](https://youtube.com/your-link-here) |
-| 🎨 Figma Prototype | [Figma](https://figma.com/your-link-here) |
 
 ---
 
 <div align="center">
-
+  
 Built with ❤️ in Cambodia 🇰🇭 for ASEAN Youth
 
 **SAMSOM — Smart AI Money Companion**
