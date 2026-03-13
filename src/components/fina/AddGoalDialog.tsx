@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { X, Target, Laptop, Plane, ShieldCheck, GraduationCap, Car, Heart, Wallet } from 'lucide-react';
-import { useGoals } from '@/contexts/GoalsContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 const ICON_OPTIONS = [
@@ -19,10 +18,10 @@ const COLOR_OPTIONS = ['#3b82f6', '#f97316', '#00c896', '#8b5cf6', '#ef4444', '#
 interface AddGoalDialogProps {
   open: boolean;
   onClose: () => void;
+  onGoalAdded: (goal: any) => void;
 }
 
-const AddGoalDialog = ({ open, onClose }: AddGoalDialogProps) => {
-  const { addGoal } = useGoals();
+const AddGoalDialog = ({ open, onClose, onGoalAdded }: AddGoalDialogProps) => {
   const { currency } = useCurrency();
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
@@ -34,7 +33,8 @@ const AddGoalDialog = ({ open, onClose }: AddGoalDialogProps) => {
 
   const handleSubmit = () => {
     if (!name || !target) return;
-    addGoal({
+    
+    onGoalAdded({
       name,
       icon: selectedIcon,
       target: parseFloat(target),
@@ -42,6 +42,8 @@ const AddGoalDialog = ({ open, onClose }: AddGoalDialogProps) => {
       color: selectedColor,
       deadline: deadline || 'No deadline',
     });
+    
+    // Reset form
     setName('');
     setTarget('');
     setDeadline('');
@@ -83,7 +85,7 @@ const AddGoalDialog = ({ open, onClose }: AddGoalDialogProps) => {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Deadline</label>
+            <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Deadline (optional)</label>
             <input
               className="w-full px-3 py-2.5 rounded-xl border-[1.5px] border-border text-[13px] text-foreground bg-card outline-none focus:border-primary transition-colors"
               placeholder="e.g. Dec 2026"

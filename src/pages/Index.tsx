@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { type PageId, NAV_ITEMS } from '@/lib/constants';
+import { useIsMobile } from '@/hooks/use-mobile';
 import Dashboard from '@/components/fina/Dashboard';
 import ChatPage from '@/components/fina/ChatPage';
 import TrackerPage from '@/components/fina/TrackerPage';
 import DebtGoalsPage from '@/components/fina/DebtGoalsPage';
 import SettingsPage from '@/components/fina/SettingsPage';
 import { Home, Sparkles, BarChart3, Shield, Settings } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const NAV_ICONS: Record<PageId, React.ElementType> = {
   home: Home,
@@ -17,11 +17,18 @@ const NAV_ICONS: Record<PageId, React.ElementType> = {
 };
 
 const PAGE_TITLES: Record<PageId, string> = {
-  home: 'SAMSOM',
+  home: 'SANSOM',
   chat: 'AI Advisor',
   tracker: 'Tracker',
   debtgoals: 'Debt & Goals',
   settings: 'Settings',
+};
+
+// Dummy user data
+const DUMMY_USER = {
+  name: 'Hieng Dara',
+  email: 'dara@sansom.app',
+  avatar: null,
 };
 
 const Index = () => {
@@ -35,6 +42,7 @@ const Index = () => {
       case 'tracker': return <TrackerPage />;
       case 'debtgoals': return <DebtGoalsPage />;
       case 'settings': return <SettingsPage />;
+      default: return <Dashboard setPage={setPage} />;
     }
   };
 
@@ -43,14 +51,29 @@ const Index = () => {
     return (
       <div className="flex min-h-screen bg-background">
         {/* Sidebar */}
-        <aside className="w-[220px] bg-card border-r border-border flex flex-col py-6 px-3 flex-shrink-0 sticky top-0 h-screen">
+        <aside className="w-[260px] bg-card border-r border-border flex flex-col py-6 px-3 flex-shrink-0 sticky top-0 h-screen">
+          {/* Logo */}
           <div className="flex items-center gap-2.5 px-3 mb-8">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-primary">
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-extrabold text-foreground font-display tracking-tight">SAMSOM</span>
+            <span className="text-lg font-extrabold text-foreground font-display tracking-tight">SANSOM</span>
           </div>
 
+          {/* Dummy User Profile Card */}
+          <div className="px-3 mb-6">
+            <div className="w-full flex items-center gap-3 p-3 rounded-xl bg-accent/50">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Home className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-foreground truncate">{DUMMY_USER.name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{DUMMY_USER.email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
           <nav className="flex flex-col gap-1 flex-1">
             {NAV_ITEMS.map(n => {
               const Icon = NAV_ICONS[n.id];
@@ -72,7 +95,7 @@ const Index = () => {
             })}
           </nav>
 
-          <p className="text-[10px] text-muted-foreground text-center mt-auto">SAMSOM v1.0</p>
+          <p className="text-[10px] text-muted-foreground text-center mt-4">SANSOM v1.0</p>
         </aside>
 
         {/* Main Content */}
@@ -91,15 +114,25 @@ const Index = () => {
     );
   }
 
-  // Mobile/Tablet: bottom nav
+  // Mobile/Tablet: bottom nav with header
   return (
     <div className="flex min-h-screen bg-background">
       <div className="w-full max-w-2xl mx-auto flex flex-col min-h-screen">
         {/* Header */}
         <div className="px-4 sm:px-6 pt-3 pb-3 flex justify-between items-center flex-shrink-0 bg-card/80 backdrop-blur-sm sticky top-0 z-10 border-b border-border">
-          <h1 className="text-xl font-extrabold text-foreground font-display tracking-tight">{PAGE_TITLES[page]}</h1>
-          <div className="w-[38px] h-[38px] rounded-xl gradient-primary flex items-center justify-center shadow-primary">
-            {(() => { const Icon = NAV_ICONS[page]; return <Icon className="w-5 h-5 text-primary-foreground" />; })()}
+          <h1 className="text-xl font-extrabold text-foreground font-display tracking-tight">
+            {PAGE_TITLES[page]}
+          </h1>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
+              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                <Home className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-sm text-foreground hidden sm:block">
+                {DUMMY_USER.name.split(' ')[0]}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -118,13 +151,21 @@ const Index = () => {
 
             if (isCenter) {
               return (
-                <button key={n.id} onClick={() => setPage(n.id)} className="flex flex-col items-center gap-0.5 -mt-5">
+                <button
+                  key={n.id}
+                  onClick={() => setPage(n.id)}
+                  className="flex flex-col items-center gap-0.5 -mt-5"
+                >
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all ${
-                    isActive ? 'gradient-primary shadow-primary' : 'bg-primary/90 shadow-primary/50 hover:bg-primary'
+                    isActive
+                      ? 'gradient-primary shadow-primary'
+                      : 'bg-primary/90 shadow-primary/50 hover:bg-primary'
                   }`}>
                     <Icon className="w-6 h-6 text-primary-foreground" />
                   </div>
-                  <span className={`text-[9px] tracking-wide ${isActive ? 'font-bold text-primary' : 'font-medium text-muted-foreground'}`}>
+                  <span className={`text-[9px] tracking-wide ${
+                    isActive ? 'font-bold text-primary' : 'font-medium text-muted-foreground'
+                  }`}>
                     {n.label}
                   </span>
                 </button>
@@ -135,10 +176,14 @@ const Index = () => {
               <button
                 key={n.id}
                 onClick={() => setPage(n.id)}
-                className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-colors ${isActive ? 'bg-accent' : 'hover:bg-accent/50'}`}
+                className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-colors ${
+                  isActive ? 'bg-accent' : 'hover:bg-accent/50'
+                }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                <span className={`text-[9px] tracking-wide ${isActive ? 'font-bold text-primary' : 'font-medium text-muted-foreground'}`}>
+                <span className={`text-[9px] tracking-wide ${
+                  isActive ? 'font-bold text-primary' : 'font-medium text-muted-foreground'
+                }`}>
                   {n.label}
                 </span>
               </button>

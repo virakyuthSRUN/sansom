@@ -1,62 +1,133 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Send } from 'lucide-react';
+import { Sparkles, Send, Trash2 } from 'lucide-react';
 
-const RESPONSES: Record<string, string> = {
-  default: "Based on your profile, I'd suggest reviewing your Shopee spending — it's up 34% this month. Want a detailed breakdown?",
-  spend: "This month you've spent $1,996 total. Your biggest category is Shopping ($90), followed by Food ($43). You're on track but watch the BNPL payments!",
-  debt: "Your current debt risk score is 52/100 — MEDIUM. You have 2 active BNPL plans totaling $450. I recommend closing one before adding more credit.",
-  save: "For a Bali trip at $2,000, saving $200/month gets you there in 10 months. I can auto-allocate $200 from your monthly income automatically.",
-  bnpl: "BNPL (Buy Now Pay Later) feels free but charges 18–24% interest if you miss payments. Your 2 active plans cost you $450 total. Pay them off before adding new ones!",
-};
-
-const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
+// Define the API response type
+interface ChatResponse {
+  success: boolean;
+  response: string;
+}
 
 interface Msg {
   role: 'user' | 'ai';
   text: string;
+  timestamp?: number;
 }
 
+const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
+
+// Dummy welcome message
+const WELCOME_MESSAGE = "Hi Dara! I'm SANSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?";
+
+const CHAT_STORAGE_KEY = 'sansom-chat-history';
+
 const ChatPage = () => {
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'ai', text: "Hi! I'm SAMSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?" },
-    { role: 'user', text: "Can I afford to buy AirPods this month? They cost $899." },
-    { role: 'ai', text: "Based on your current spending, you've used $620 of your $900 budget — leaving $280 free.\n\n$899 is $619 over your remaining budget. I'd recommend against it this month.\n\nTip: If you save $200/month, you can get them in 4.5 months without debt. Want me to set up a savings goal?" },
-  ]);
+  const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const send = (text: string) => {
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const savedChats = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (savedChats) {
+      try {
+        const parsed = JSON.parse(savedChats);
+        setMsgs(parsed);
+      } catch (e) {
+        console.error('Failed to parse saved chat history:', e);
+        setMsgs([{ role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() }]);
+      }
+    } else {
+      setMsgs([{ role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() }]);
+    }
+  }, []);
+
+  // Save to localStorage whenever messages change
+  useEffect(() => {
+    if (msgs.length > 0) {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs));
+    }
+  }, [msgs]);
+
+  const send = async (text: string) => {
     if (!text.trim()) return;
-    setMsgs(prev => [...prev, { role: 'user', text }]);
+    
+    const userMsg: Msg = { role: 'user', text, timestamp: Date.now() };
+    setMsgs(prev => [...prev, userMsg]);
     setInput('');
     setTyping(true);
-    setTimeout(() => {
-      const lower = text.toLowerCase();
-      const reply = lower.includes('spend') ? RESPONSES.spend
-        : lower.includes('debt') || lower.includes('risk') ? RESPONSES.debt
-        : lower.includes('save') || lower.includes('trip') || lower.includes('bali') ? RESPONSES.save
-        : lower.includes('bnpl') ? RESPONSES.bnpl
-        : RESPONSES.default;
-      setMsgs(p => [...p, { role: 'ai', text: reply }]);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: 'student-123',
+          message: text
+        })
+      });
+
+      const data: ChatResponse = await response.json();
+      
+      const aiMsg: Msg = { 
+        role: 'ai', 
+        text: data.success ? data.response : "I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: Date.now()
+      };
+      
+      setMsgs(prev => [...prev, aiMsg]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMsgs(prev => [...prev, { 
+        role: 'ai', 
+        text: "Network error. Please check your connection and try again.",
+        timestamp: Date.now()
+      }]);
+    } finally {
       setTyping(false);
-    }, 1200);
+    }
   };
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, typing]);
+  const clearHistory = () => {
+    if (confirm('Are you sure you want to clear all chat history?')) {
+      const welcomeMsg: Msg = { role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() };
+      setMsgs([welcomeMsg]);
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify([welcomeMsg]));
+    }
+  };
+
+  useEffect(() => { 
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+  }, [msgs, typing]);
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
       {/* Header */}
       <div className="pb-3 border-b border-border mb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="text-[15px] font-bold text-foreground">SANSOM AI Advisor</p>
+              <p className="text-[11px] text-primary font-medium">● Online · Powered by SANSOM AI</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[15px] font-bold text-foreground">SAMSOM AI Advisor</p>
-            <p className="text-[11px] text-primary font-medium">● Online · Powered by AI</p>
-          </div>
+          
+          {msgs.length > 1 && (
+            <button
+              onClick={clearHistory}
+              className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-destructive/10 transition-colors group"
+              title="Clear chat history"
+            >
+              <Trash2 className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -77,6 +148,11 @@ const ChatPage = () => {
               }`}
             >
               {m.text}
+              {m.timestamp && (
+                <div className="text-[8px]  mt-1 opacity-50">
+                  {new Date(m.timestamp).toLocaleTimeString()}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -87,13 +163,24 @@ const ChatPage = () => {
             </div>
             <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1">
               {[0, 1, 2].map(i => (
-                <div key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" style={{ animation: `pulse-dot 1s ${i * 0.2}s infinite` }} />
+                <div key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-pulse" 
+                  style={{ animationDelay: `${i * 0.2}s` }} 
+                />
               ))}
             </div>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* Chat Stats */}
+      {msgs.length > 1 && (
+        <div className="px-2 py-1">
+          <p className="text-[9px] text-muted-foreground text-right">
+            {Math.floor(msgs.length / 2)} conversations · History saved
+          </p>
+        </div>
+      )}
 
       {/* Input */}
       <div className="border-t border-border pt-3">
@@ -113,12 +200,13 @@ const ChatPage = () => {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && send(input)}
-            placeholder="Ask SAMSOM anything..."
+            placeholder="Ask SANSOM anything..."
             className="flex-1 px-3.5 py-3 rounded-xl border-[1.5px] border-border text-sm text-foreground outline-none focus:border-primary transition-colors bg-card"
           />
           <button
             onClick={() => send(input)}
-            className="gradient-primary text-primary-foreground rounded-xl px-4 py-3 font-semibold text-sm shadow-primary hover:shadow-primary-hover transition-all flex-shrink-0"
+            disabled={typing}
+            className="gradient-primary text-primary-foreground rounded-xl px-4 py-3 font-semibold text-sm shadow-primary hover:shadow-primary-hover transition-all flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4" />
           </button>

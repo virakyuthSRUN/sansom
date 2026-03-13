@@ -1,0 +1,45 @@
+{
+  "userId": "student-123",
+  "accounts": [
+    { "bank": "ABA", "balance": 450.75, "currency": "USD" },
+    { "bank": "ACLEDA", "balance": 1800000, "currency": "KHR" }
+  ],
+  "transactions": [
+    {
+      "id": "1",
+      "date": "2026-03-12",
+      "description": "ABA Pay - Pizza Company",
+      "amount": -12.50,
+      "category": "Food",
+      "merchant": "Pizza Company"
+    },
+    {
+      "id": "2",
+      "date": "2026-03-11",
+      "description": "GrabPay Later payment",
+      "amount": -75.00,
+      "category": "BNPL",
+      "merchant": "GrabPay"
+    },
+    {
+      "id": "3",
+      "date": "2026-03-10",
+      "description": "Wing transfer from Mom",
+      "amount": 200.00,
+      "category": "Income",
+      "merchant": "Family"
+    }
+  ],
+  "bnplPlans": [
+    {
+      "provider": "Atome",
+      "remaining": 200,
+      "monthly": 100
+    },
+    {
+      "provider": "GrabPay Later",
+      "remaining": 150,
+      "monthly": 75
+    }
+  ]
+}

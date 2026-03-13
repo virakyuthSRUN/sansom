@@ -1,19 +1,19 @@
 import { useState } from 'react';
-import { useGoals } from '@/contexts/GoalsContext';
+import { GOALS as INITIAL_GOALS } from '@/lib/constants';
 import RingChart from './RingChart';
 import DynamicIcon from './DynamicIcon';
-import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check, Trash2 } from 'lucide-react';
-import { useCurrency } from '@/contexts/CurrencyContext';
 import AddGoalDialog from './AddGoalDialog';
+import { Calculator, CheckCircle, AlertTriangle, AlertOctagon, Sparkles, Plus, Check } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
-/* ── Debt data ── */
+/* ── Dummy BNPL data ── */
 const BNPLS = [
   { name: 'Atome', platform: 'Shopee', amount: 300, monthly: 100, rate: 18, status: 'Active', risk: 'MEDIUM' as const },
   { name: 'GrabPay Later', platform: 'Grab', amount: 150, monthly: 75, rate: 24, status: 'Active', risk: 'HIGH' as const },
 ];
 
 const getColor = (s: number) => s <= 30 ? '#00c896' : s <= 60 ? '#ffb300' : '#ff4757';
-const getLabel = (s: number) => s <= 20 ? 'SAFE' : s <= 30 ? 'LOW RISK' : s <= 60 ? 'MEDIUM RISK' : s <= 80 ? 'HIGH RISK' : 'CRITICAL';
+const getLabel = (s: number) => s <= 30 ? 'LOW RISK' : s <= 60 ? 'MEDIUM RISK' : 'HIGH RISK';
 const getBg = (s: number) => s <= 30 ? 'hsl(var(--success-light))' : s <= 60 ? 'hsl(var(--warning-light))' : 'hsl(0 72% 96%)';
 
 const RiskIcon = ({ score }: { score: number }) => {
@@ -26,11 +26,11 @@ type Tab = 'debt' | 'goals';
 
 const DebtGoalsPage = () => {
   const { format, currency } = useCurrency();
-  const { goals, removeGoal } = useGoals();
   const score = 52;
-  const [tab, setTab] = useState<Tab>('goals');
+  const [tab, setTab] = useState<Tab>('debt');
   const [checked, setChecked] = useState({ income: '', savings: '', bnpl: '', loans: '' });
   const [simScore, setSimScore] = useState<number | null>(null);
+  const [goals, setGoals] = useState(INITIAL_GOALS);
   const [showAddGoal, setShowAddGoal] = useState(false);
 
   const simulate = () => {
@@ -41,19 +41,29 @@ const DebtGoalsPage = () => {
     setSimScore(Math.min(100, Math.round(ratio * 1.8)));
   };
 
+  const addGoal = (newGoal: any) => {
+    const goalWithId = {
+      ...newGoal,
+      id: Date.now().toString(),
+    };
+    setGoals(prev => [...prev, goalWithId]);
+  };
+
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
       {/* Tab Switcher */}
       <div className="flex gap-1 bg-muted rounded-xl p-1">
-      {([
-          { id: 'goals' as Tab, label: 'Goals', icon: Check },
+        {([
           { id: 'debt' as Tab, label: 'Debt Risk', icon: AlertTriangle },
+          { id: 'goals' as Tab, label: 'Goals', icon: Check },
         ]).map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[13px] font-semibold transition-all ${
-              tab === t.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              tab === t.id
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <t.icon className="w-4 h-4" />
@@ -154,6 +164,17 @@ const DebtGoalsPage = () => {
               </div>
             )}
           </div>
+
+          {/* Debt Tips */}
+          <div className="bg-accent/10 rounded-2xl p-4 border border-accent/30">
+            <p className="text-[11px] font-bold text-primary mb-2">💡 TIPS TO REDUCE DEBT</p>
+            <ul className="text-xs text-foreground space-y-1.5 list-disc list-inside">
+              <li>Pay more than the minimum on your highest interest plan first</li>
+              <li>Consider consolidating multiple BNPL plans</li>
+              <li>Avoid taking new BNPL until existing ones are paid off</li>
+              <li>Set up automatic payments to avoid late fees</li>
+            </ul>
+          </div>
         </>
       ) : (
         <>
@@ -184,15 +205,7 @@ const DebtGoalsPage = () => {
                       <p className="text-[11px] text-muted-foreground">Target by {g.deadline}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <RingChart pct={pct} size={56} color={g.color} stroke={6} label={`${pct}%`} />
-                    <button
-                      onClick={() => removeGoal(g.id)}
-                      className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center hover:bg-destructive/20 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </button>
-                  </div>
+                  <RingChart pct={pct} size={56} color={g.color} stroke={6} label={`${pct}%`} />
                 </div>
                 <div className="flex justify-between mb-2">
                   <span className="text-xs text-muted-foreground">Saved: <b className="text-foreground">{format(g.saved)}</b></span>
@@ -214,7 +227,7 @@ const DebtGoalsPage = () => {
             );
           })}
 
-          {/* Add Goal */}
+          {/* Add Goal Button */}
           <button
             onClick={() => setShowAddGoal(true)}
             className="border-2 border-dashed border-border rounded-2xl p-5 flex items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors w-full"
@@ -225,7 +238,12 @@ const DebtGoalsPage = () => {
             <p className="text-[13px] font-semibold text-muted-foreground">Add a new savings goal</p>
           </button>
 
-          <AddGoalDialog open={showAddGoal} onClose={() => setShowAddGoal(false)} />
+          {/* Add Goal Dialog */}
+          <AddGoalDialog 
+            open={showAddGoal} 
+            onClose={() => setShowAddGoal(false)}
+            onGoalAdded={addGoal}
+          />
         </>
       )}
     </div>

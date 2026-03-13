@@ -1,7 +1,7 @@
-import { User, DollarSign, Bell, Shield, LogOut, ChevronRight, Check, Moon, Sun, Palette, Camera, X, Save } from 'lucide-react';
-import { useCurrency, CURRENCIES } from '@/contexts/CurrencyContext';
-import { useTheme, type ThemeColor } from '@/contexts/ThemeContext';
 import { useState } from 'react';
+import { User, DollarSign, Bell, Shield, LogOut, ChevronRight, Check, Moon, Sun, Palette } from 'lucide-react';
+import { useCurrency, CURRENCIES, type CurrencyCode } from '@/contexts/CurrencyContext';
+import { useTheme, type ThemeColor } from '@/contexts/ThemeContext';
 
 const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
   { color: 'green', label: 'Green', hsl: 'hsl(162,100%,39%)' },
@@ -10,115 +10,63 @@ const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
   { color: 'red', label: 'Red', hsl: 'hsl(0,72%,51%)' },
 ];
 
-interface Profile {
-  name: string;
-  email: string;
-  phone: string;
-  plan: string;
-}
+// Dummy user data
+const DUMMY_USER = {
+  name: 'Hieng Dara',
+  email: 'dara@gmail.com',
+  phone: '+60 12-345 6789',
+  plan: 'Free Plan',
+  memberSince: 'March 2026',
+  monthlyBudget: 900,
+};
 
 const SettingsPage = () => {
   const { currency, setCurrencyCode } = useCurrency();
   const { darkMode, toggleDarkMode, themeColor, setThemeColor } = useTheme();
+  
   const [notifications, setNotifications] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [profile, setProfile] = useState<Profile>(() => {
-    const stored = localStorage.getItem('samsom-profile');
-    return stored ? JSON.parse(stored) : { name: 'Hieng Dara', email: 'dara@samsom.app', phone: '+60 12-345 6789', plan: 'Free Plan' };
-  });
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Profile>(profile);
-
-  const saveProfile = () => {
-    setProfile(draft);
-    localStorage.setItem('samsom-profile', JSON.stringify(draft));
-    setEditing(false);
+  const handleCurrencyChange = async (code: CurrencyCode) => {
+    setSaving(true);
+    setCurrencyCode(code);
+    // Simulate API call
+    setTimeout(() => setSaving(false), 500);
   };
 
-  const cancelEdit = () => {
-    setDraft(profile);
-    setEditing(false);
+  // Format date
+  const formatDate = (dateString?: string) => {
+    return dateString || 'N/A';
   };
 
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
-      <h1 className="text-lg font-bold text-foreground font-display">Settings</h1>
 
-      {/* Profile Card - Editable */}
+      {/* Profile Card */}
       <div className="bg-card rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-4 mb-4">
           <div className="relative">
             <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-primary">
               <User className="w-8 h-8 text-primary-foreground" />
             </div>
-            {editing && (
-              <button className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
-                <Camera className="w-3 h-3 text-primary-foreground" />
-              </button>
-            )}
           </div>
           <div className="flex-1">
-            {!editing ? (
-              <>
-                <p className="text-[15px] font-bold text-foreground">{profile.name}</p>
-                <p className="text-[12px] text-muted-foreground">{profile.email}</p>
-                <p className="text-[11px] text-primary font-semibold mt-1">{profile.plan}</p>
-              </>
-            ) : (
-              <p className="text-[13px] font-bold text-foreground">Edit Profile</p>
-            )}
+            <p className="text-[15px] font-bold text-foreground">{DUMMY_USER.name}</p>
+            <p className="text-[12px] text-muted-foreground">{DUMMY_USER.email}</p>
+            <p className="text-[11px] text-primary font-semibold mt-1">{DUMMY_USER.plan}</p>
           </div>
-          {!editing ? (
-            <button
-              onClick={() => { setDraft(profile); setEditing(true); }}
-              className="text-[12px] font-semibold text-primary bg-accent px-3 py-1.5 rounded-lg hover:bg-accent/80 transition-colors"
-            >
-              Edit
-            </button>
-          ) : (
-            <div className="flex gap-1.5">
-              <button onClick={cancelEdit} className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-              <button onClick={saveProfile} className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors">
-                <Save className="w-4 h-4 text-primary-foreground" />
-              </button>
-            </div>
-          )}
         </div>
 
-        {editing && (
-          <div className="flex flex-col gap-2.5 animate-slide-up">
-            {[
-              { label: 'Full Name', key: 'name' as const, placeholder: 'Your name' },
-              { label: 'Email', key: 'email' as const, placeholder: 'your@email.com' },
-              { label: 'Phone', key: 'phone' as const, placeholder: '+60 12-345 6789' },
-            ].map(field => (
-              <div key={field.key}>
-                <p className="text-[10px] text-muted-foreground mb-1 font-semibold">{field.label}</p>
-                <input
-                  className="w-full px-3 py-2.5 rounded-xl border-[1.5px] border-border text-[13px] text-foreground outline-none focus:border-primary transition-colors bg-background"
-                  placeholder={field.placeholder}
-                  value={draft[field.key]}
-                  onChange={e => setDraft(p => ({ ...p, [field.key]: e.target.value }))}
-                />
-              </div>
-            ))}
+        <div className="grid grid-cols-2 gap-3 mt-1">
+          <div className="bg-muted rounded-xl p-3">
+            <p className="text-[10px] text-muted-foreground mb-0.5">Phone</p>
+            <p className="text-[12px] font-semibold text-foreground">{DUMMY_USER.phone}</p>
           </div>
-        )}
-
-        {!editing && (
-          <div className="grid grid-cols-2 gap-3 mt-1">
-            <div className="bg-muted rounded-xl p-3">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Phone</p>
-              <p className="text-[12px] font-semibold text-foreground">{profile.phone}</p>
-            </div>
-            <div className="bg-muted rounded-xl p-3">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Plan</p>
-              <p className="text-[12px] font-semibold text-primary">{profile.plan}</p>
-            </div>
+          <div className="bg-muted rounded-xl p-3">
+            <p className="text-[10px] text-muted-foreground mb-0.5">Member Since</p>
+            <p className="text-[12px] font-semibold text-foreground">{DUMMY_USER.memberSince}</p>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Currency Selection */}
@@ -136,12 +84,13 @@ const SettingsPage = () => {
           {CURRENCIES.map(c => (
             <button
               key={c.code}
-              onClick={() => setCurrencyCode(c.code)}
+              onClick={() => handleCurrencyChange(c.code as CurrencyCode)}
+              disabled={saving}
               className={`flex items-center gap-2.5 p-3 rounded-xl border-[1.5px] transition-all text-left ${
                 currency.code === c.code
                   ? 'border-primary bg-accent'
                   : 'border-border bg-card hover:border-primary/50'
-              }`}
+              } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className="flex-1">
                 <p className={`text-[13px] font-bold ${currency.code === c.code ? 'text-primary' : 'text-foreground'}`}>
@@ -153,6 +102,29 @@ const SettingsPage = () => {
             </button>
           ))}
         </div>
+        {saving && (
+          <p className="text-[10px] text-primary mt-2 text-center">Saving preference...</p>
+        )}
+      </div>
+
+      {/* Budget Overview */}
+      <div className="bg-card rounded-2xl p-4 shadow-sm">
+        <p className="text-[13px] font-bold text-foreground mb-3.5">Budget Overview</p>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-muted-foreground">Monthly Budget</span>
+          <span className="text-sm font-bold text-foreground">
+            {currency.symbol}{DUMMY_USER.monthlyBudget.toFixed(2)}
+          </span>
+        </div>
+        <div className="h-2 bg-border rounded-full overflow-hidden">
+          <div 
+            className="h-full rounded-full bg-primary transition-all duration-700"
+            style={{ width: '68%' }}
+          />
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          $620 spent of $900 budget
+        </p>
       </div>
 
       {/* Preferences */}
@@ -215,6 +187,7 @@ const SettingsPage = () => {
                 onClick={() => setThemeColor(t.color)}
                 className={`w-6 h-6 rounded-full border-2 transition-all ${themeColor === t.color ? 'border-foreground scale-110' : 'border-transparent'}`}
                 style={{ background: t.hsl }}
+                title={t.label}
               />
             ))}
           </div>
@@ -224,26 +197,49 @@ const SettingsPage = () => {
       {/* Account */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">Account</p>
-        {[
-          { icon: Shield, label: 'Privacy & Security', sub: 'Password, 2FA' },
-          { icon: LogOut, label: 'Log Out', sub: 'Sign out of SAMSOM', destructive: true },
-        ].map((item, i) => (
-          <div key={i} className={`flex items-center justify-between py-3 cursor-pointer ${i < 1 ? 'border-b border-border' : ''}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.destructive ? 'bg-destructive/10' : 'bg-accent'}`}>
-                <item.icon className={`w-4 h-4 ${item.destructive ? 'text-destructive' : 'text-primary'}`} />
-              </div>
-              <div>
-                <p className={`text-[13px] font-semibold ${item.destructive ? 'text-destructive' : 'text-foreground'}`}>{item.label}</p>
-                <p className="text-[10px] text-muted-foreground">{item.sub}</p>
-              </div>
+        
+        {/* Privacy & Security */}
+        <div className="flex items-center justify-between py-3 border-b border-border cursor-pointer hover:bg-accent/50 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
+              <Shield className="w-4 h-4 text-primary" />
             </div>
-            <ChevronRight className={`w-4 h-4 ${item.destructive ? 'text-destructive' : 'text-muted-foreground'}`} />
+            <div>
+              <p className="text-[13px] font-semibold text-foreground">Privacy & Security</p>
+              <p className="text-[10px] text-muted-foreground">Manage your account</p>
+            </div>
           </div>
-        ))}
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+
+        {/* Log Out */}
+        <div className="flex items-center justify-between py-3 cursor-pointer hover:bg-destructive/5 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center">
+              <LogOut className="w-4 h-4 text-destructive" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-destructive">Log Out</p>
+              <p className="text-[10px] text-muted-foreground">Sign out of SANSOM</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-destructive" />
+        </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground text-center pb-4">SAMSOM v1.0 · Smart AI Money Companion</p>
+      {/* Session Info */}
+      <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
+        <p className="text-[10px] text-muted-foreground text-center">
+          Signed in as <span className="text-foreground font-medium">{DUMMY_USER.email}</span>
+        </p>
+        <p className="text-[9px] text-muted-foreground text-center mt-1">
+          User ID: darahieng12
+        </p>
+      </div>
+
+      <p className="text-[10px] text-muted-foreground text-center pb-4">
+        SANSOM v1.0 · Smart AI Money Companion
+      </p>
     </div>
   );
 };
