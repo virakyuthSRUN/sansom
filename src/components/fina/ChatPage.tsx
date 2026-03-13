@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Send } from 'lucide-react';
+import { Sparkles, Send, Trash2 } from 'lucide-react';
 
 // Define the API response type
 interface ChatResponse {
@@ -10,6 +10,7 @@ interface ChatResponse {
 interface Msg {
   role: 'user' | 'ai';
   text: string;
+  timestamp?: number;
 }
 
 const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I save for a trip?", "What's BNPL risk?"];
@@ -17,20 +18,44 @@ const SUGGESTIONS = ["How's my spending?", "Am I at risk of debt?", "How do I sa
 // Dummy welcome message
 const WELCOME_MESSAGE = "Hi Dara! I'm SANSOM, your AI financial advisor. I can help you budget, track spending, or check if you can afford something. What's on your mind?";
 
+const CHAT_STORAGE_KEY = 'sansom-chat-history';
+
 const ChatPage = () => {
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'ai', text: WELCOME_MESSAGE },
-  ]);
+  const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const savedChats = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (savedChats) {
+      try {
+        const parsed = JSON.parse(savedChats);
+        setMsgs(parsed);
+      } catch (e) {
+        console.error('Failed to parse saved chat history:', e);
+        setMsgs([{ role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() }]);
+      }
+    } else {
+      setMsgs([{ role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() }]);
+    }
+  }, []);
+
+  // Save to localStorage whenever messages change
+  useEffect(() => {
+    if (msgs.length > 0) {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs));
+    }
+  }, [msgs]);
+
   const send = async (text: string) => {
     if (!text.trim()) return;
     
-    setMsgs(prev => [...prev, { role: 'user', text }]);
+    const userMsg: Msg = { role: 'user', text, timestamp: Date.now() };
+    setMsgs(prev => [...prev, userMsg]);
     setInput('');
     setTyping(true);
 
@@ -48,22 +73,30 @@ const ChatPage = () => {
 
       const data: ChatResponse = await response.json();
       
-      if (data.success) {
-        setMsgs(prev => [...prev, { role: 'ai', text: data.response }]);
-      } else {
-        setMsgs(prev => [...prev, { 
-          role: 'ai', 
-          text: "I'm having trouble connecting right now. Please try again in a moment." 
-        }]);
-      }
+      const aiMsg: Msg = { 
+        role: 'ai', 
+        text: data.success ? data.response : "I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: Date.now()
+      };
+      
+      setMsgs(prev => [...prev, aiMsg]);
     } catch (error) {
       console.error('Chat error:', error);
       setMsgs(prev => [...prev, { 
         role: 'ai', 
-        text: "Network error. Please check your connection and try again." 
+        text: "Network error. Please check your connection and try again.",
+        timestamp: Date.now()
       }]);
     } finally {
       setTyping(false);
+    }
+  };
+
+  const clearHistory = () => {
+    if (confirm('Are you sure you want to clear all chat history?')) {
+      const welcomeMsg: Msg = { role: 'ai', text: WELCOME_MESSAGE, timestamp: Date.now() };
+      setMsgs([welcomeMsg]);
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify([welcomeMsg]));
     }
   };
 
@@ -75,14 +108,26 @@ const ChatPage = () => {
     <div className="flex flex-col h-full animate-fade-in">
       {/* Header */}
       <div className="pb-3 border-b border-border mb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="text-[15px] font-bold text-foreground">SANSOM AI Advisor</p>
+              <p className="text-[11px] text-primary font-medium">● Online · Powered by SANSOM AI</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[15px] font-bold text-foreground">SANSOM AI Advisor</p>
-            <p className="text-[11px] text-primary font-medium">● Online · Powered by SANSOM AI</p>
-          </div>
+          
+          {msgs.length > 1 && (
+            <button
+              onClick={clearHistory}
+              className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-destructive/10 transition-colors group"
+              title="Clear chat history"
+            >
+              <Trash2 className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -103,6 +148,11 @@ const ChatPage = () => {
               }`}
             >
               {m.text}
+              {m.timestamp && (
+                <div className="text-[8px]  mt-1 opacity-50">
+                  {new Date(m.timestamp).toLocaleTimeString()}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -122,6 +172,15 @@ const ChatPage = () => {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* Chat Stats */}
+      {msgs.length > 1 && (
+        <div className="px-2 py-1">
+          <p className="text-[9px] text-muted-foreground text-right">
+            {Math.floor(msgs.length / 2)} conversations · History saved
+          </p>
+        </div>
+      )}
 
       {/* Input */}
       <div className="border-t border-border pt-3">
