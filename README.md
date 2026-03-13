@@ -216,7 +216,7 @@ TELLER_ENVIRONMENT=sandbox
 cd sansom/ml-service
 
 # Install Python dependencies
-pip3 install -r requirements.txt
+pip3 install fastapi uvicorn scikit-learn pandas numpy joblib xgboost
 
 # First time only — train the models (~30 seconds)
 # This generates spending_model.pkl, risk_model.pkl, and feature files
