@@ -393,7 +393,7 @@ Scores BNPL debt risk from 0–100 across 5 tiers.
 
 ## Refinement Changelog
 
-> 📄 Full 2-page Refinement Changelog document is included in the submission folder.
+> 📄 Full 4-page Refinement Changelog document is included in the submission folder.
 
 ### Overview
 
