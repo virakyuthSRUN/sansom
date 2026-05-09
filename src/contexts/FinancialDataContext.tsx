@@ -97,7 +97,7 @@ const defaultMonthlyTrend = [
 // Default empty state (no bank connected)
 const getDefaultData = (monthlyBudget: number): FinancialData => ({
   balance: 0,
-  moneyIn: 0,
+  moneyIn: 50000,
   moneyOut: 0,
   monthlySpent: 0,
   monthlyBudget: monthlyBudget,
@@ -119,7 +119,7 @@ export const FinancialDataProvider = ({ children }: { children: React.ReactNode 
   const { profile } = useUserProfile();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<FinancialData>(() => 
-    getDefaultData(profile?.monthly_budget || 5000)
+    getDefaultData(profile?.monthly_budget || 50000)
   );
 
   // Update budget when profile changes

@@ -1,18 +1,18 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-export type CurrencyCode = 'MYR' | 'USD' | 'SGD' | 'IDR';
+export type CurrencyCode = 'MYR' | 'USD' | 'KHR' | 'IDR';
 
 interface CurrencyConfig {
   code: CurrencyCode;
   symbol: string;
   label: string;
-  rate: number; // rate relative to MYR (base)
+  rate: number; 
 }
 
 export const CURRENCIES: CurrencyConfig[] = [
   { code: 'MYR', symbol: 'RM', label: 'Malaysian Ringgit', rate: 1 },
   { code: 'USD', symbol: '$', label: 'US Dollar', rate: 0.21 },
-  { code: 'SGD', symbol: 'S$', label: 'Singapore Dollar', rate: 0.29 },
+  { code: 'KHR', symbol: '៛', label: 'Cambodian Riel', rate: 850 }, // Approximate rate (1 MYR ≈ 850 KHR)
   { code: 'IDR', symbol: 'Rp', label: 'Indonesian Rupiah', rate: 3400 },
 ];
 
@@ -38,7 +38,8 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
 
   const format = (amountInRM: number) => {
     const converted = amountInRM * currency.rate;
-    if (currency.code === 'IDR') {
+    if (currency.code === 'IDR' || currency.code === 'KHR') {
+      // For currencies with no decimals (Riel and Rupiah)
       return `${currency.symbol} ${Math.round(converted).toLocaleString()}`;
     }
     return `${currency.symbol} ${converted.toFixed(2)}`;

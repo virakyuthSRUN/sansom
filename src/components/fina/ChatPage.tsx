@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Send, Trash2 } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 import { useFinancialData } from "@/contexts/FinancialDataContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { getOrCreateChatUserId } from "@/lib/userId";
 
-// Define the API response type
 interface ChatResponse {
   success: boolean;
   response: string;
@@ -21,80 +21,62 @@ const SUGGESTIONS = [
   "Am I at risk of debt?",
   "How do I save for a trip?",
   "What's BNPL risk?",
+  "Can I afford a new purchase?",
+  "Review my budget",
 ];
 
-// Generate welcome message with personalized data
+// Generate welcome message with personalized real data
 const generateWelcomeMessage = (
   name: string,
   monthlySpent: number,
   monthlyBudget: number,
   debtRisk: string,
+  formatCurrency: (amount: number) => string,
 ) => {
   const spentPct = Math.round((monthlySpent / monthlyBudget) * 100);
+  const remaining = monthlyBudget - monthlySpent;
 
-  return `Hi ${name}! I'm SANSOM, your AI financial advisor. 
+  return `Hi ${name}! 👋 I'm SAMSOM, your AI financial advisor.
 
-Here's your current snapshot:
-• You've spent ${formatCurrency(monthlySpent)} this month (${spentPct}% of your $${monthlyBudget} budget)
-• Your debt risk level is ${debtRisk}
+Here's your current financial snapshot:
+• You've spent ${formatCurrency(monthlySpent)} this month (${spentPct}% of your ${formatCurrency(monthlyBudget)} budget)
+• Remaining budget: ${formatCurrency(remaining)}
+• Debt risk level: ${debtRisk}
 
-I can help you budget, track spending, or check if you can afford something. What's on your mind?`;
-};
+I can help you with:
+- Budget tracking and analysis
+- Spending insights
+- Debt management advice
+- Savings goals
+- BNPL risk assessment
 
-// Helper function for formatting (since we can't use hooks outside components)
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+What specific financial question can I help you with today?`;
 };
 
 const CHAT_STORAGE_KEY = "sansom-chat-history";
 
-// Generate a random 3-digit number for the user ID (same as TrackerPage)
-const generateRandomUserId = () => {
-  const randomNum = Math.floor(Math.random() * 900) + 100;
-  return `student-${randomNum}`;
-};
-
-// Store the generated ID in localStorage to persist across sessions
-const getOrCreateUserId = () => {
-  const STORAGE_KEY = "chat_user_id";
-  let userId = localStorage.getItem(STORAGE_KEY);
-
-  if (!userId) {
-    userId = generateRandomUserId();
-    localStorage.setItem(STORAGE_KEY, userId);
-    console.log("🆕 Generated new chat user ID:", userId);
-  }
-
-  return userId;
-};
-
 const ChatPage = () => {
   const { data: financialData } = useFinancialData();
   const { profile } = useUserProfile();
+  const { format: formatCurrency, currency } = useCurrency();
 
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Use the same user ID system as TrackerPage
   const [userId] = useState(() => getOrCreateChatUserId());
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-  // Generate personalized welcome message based on actual data
+  // Get personalized welcome with real data
   const getPersonalizedWelcome = () => {
-    const name = profile?.full_name?.split(" ")[0] || "User";
+    const name = profile?.full_name?.split(" ")[0] || "Student";
     return generateWelcomeMessage(
       name,
       financialData.monthlySpent,
       financialData.monthlyBudget,
       financialData.debtRisk,
+      formatCurrency,
     );
   };
 
@@ -116,12 +98,16 @@ const ChatPage = () => {
         { role: "ai", text: getPersonalizedWelcome(), timestamp: Date.now() },
       ]);
     }
-  }, [
-    userId,
-    financialData.monthlySpent,
-    financialData.monthlyBudget,
-    financialData.debtRisk,
-  ]); // Re-run if financial data changes
+  }, [userId]);
+
+  // Update welcome message if financial data changes significantly
+  useEffect(() => {
+    if (msgs.length === 1 && msgs[0].role === "ai") {
+      setMsgs([
+        { role: "ai", text: getPersonalizedWelcome(), timestamp: Date.now() },
+      ]);
+    }
+  }, [financialData.monthlySpent, financialData.monthlyBudget]);
 
   // Save to localStorage whenever messages change
   useEffect(() => {
@@ -133,8 +119,58 @@ const ChatPage = () => {
     }
   }, [msgs, userId]);
 
+  const getRealFinancialData = () => {
+    try {
+      const trackerUserId = localStorage.getItem("tracker_user_id");
+      console.log("🔍 Tracker User ID from localStorage:", trackerUserId);
+
+      if (trackerUserId) {
+        const storedData = localStorage.getItem(
+          `financial-data-${trackerUserId}`,
+        );
+        console.log("💾 Raw stored data:", storedData);
+
+        if (storedData) {
+          const data = JSON.parse(storedData);
+          console.log("📊 Parsed tracker data:", data);
+
+          // The tracker stores totalSpent, but make sure it's the correct value
+          const totalSpent = data.totalSpent || 0;
+          const monthlyBudget = profile?.monthly_budget || 10500;
+
+          console.log("💰 Calculated values:", {
+            totalSpent,
+            monthlyBudget,
+            balance: monthlyBudget - totalSpent,
+          });
+
+          return {
+            monthlySpent: totalSpent,
+            monthlyBudget: monthlyBudget,
+            balance: monthlyBudget - totalSpent,
+          };
+        }
+      }
+    } catch (error) {
+      console.error("Error reading tracker data:", error);
+    }
+
+    // Fallback to context data
+    console.log("⚠️ Using fallback context data:", {
+      monthlySpent: financialData.monthlySpent,
+      monthlyBudget: financialData.monthlyBudget,
+      balance: financialData.balance,
+    });
+
+    return {
+      monthlySpent: financialData.monthlySpent,
+      monthlyBudget: financialData.monthlyBudget,
+      balance: financialData.balance,
+    };
+  };
+
   const send = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || typing) return;
 
     const userMsg: Msg = { role: "user", text, timestamp: Date.now() };
     setMsgs((prev) => [...prev, userMsg]);
@@ -142,27 +178,44 @@ const ChatPage = () => {
     setTyping(true);
 
     try {
-      // Include financial context in the request
+      // Calculate BNPL total from real data
+      const bnplTotal =
+        financialData.bnpls?.reduce((sum, plan) => sum + plan.amount, 0) || 0;
+
+      const requestBody = {
+        userId: userId,
+        message: text,
+        currency: {
+          code: currency.code, // Send currency code (MYR, USD, KHR, IDR)
+          symbol: currency.symbol, // Send currency symbol (RM, $, ៛, Rp)
+        },
+        context: {
+          monthlySpent: financialData.monthlySpent, // This is in MYR
+          monthlyBudget: financialData.monthlyBudget, // This is in MYR
+          debtRisk: financialData.debtRisk,
+          bnplCount: financialData.bnplCount || 0,
+          bnplTotal: bnplTotal, // This is in MYR
+          balance: financialData.balance, // This is in MYR
+          recentTransactions: financialData.transactions?.slice(0, 10) || [],
+          goals: financialData.goals || [],
+        },
+      };
+
+      console.log(
+        "📤 Sending to backend:",
+        JSON.stringify(requestBody, null, 2),
+      );
+
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          userId: userId,
-          message: text,
-          context: {
-            monthlySpent: financialData.monthlySpent,
-            monthlyBudget: financialData.monthlyBudget,
-            debtRisk: financialData.debtRisk,
-            bnplCount: financialData.bnplCount,
-            recentTransactions: financialData.transactions.slice(0, 5),
-            goals: financialData.goals,
-          },
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data: ChatResponse = await response.json();
+      console.log("📥 Received from backend:", data);
 
       const aiMsg: Msg = {
         role: "ai",
@@ -213,15 +266,19 @@ const ChatPage = () => {
       <div className="pb-3 border-b border-border mb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center">
+              <img
+                src="public/favicon.ico"
+                alt="Logo"
+                className="w-7 h-7 object-contain"
+              />
             </div>
             <div>
               <p className="text-[15px] font-bold text-foreground">
-                SANSOM AI Advisor
+                SAMSOM AI Advisor
               </p>
               <p className="text-[11px] text-primary font-medium">
-                ● Online · Powered by SANSOM AI
+                ● Online · Powered by AI
               </p>
             </div>
           </div>
@@ -236,16 +293,30 @@ const ChatPage = () => {
             </button>
           )}
         </div>
-        {/* Show current financial snapshot in header */}
-        <div className="mt-2 flex gap-2 text-[10px] text-muted-foreground">
+
+        {/* Real-time financial snapshot */}
+        <div className="mt-2 flex gap-3 text-[10px] text-muted-foreground flex-wrap">
           <span>
-            Budget: {formatCurrency(financialData.monthlySpent)} /{" "}
+            Spent: {formatCurrency(financialData.monthlySpent)} /{" "}
             {formatCurrency(financialData.monthlyBudget)}
           </span>
           <span>•</span>
-          <span>Debt Risk: {financialData.debtRisk}</span>
+          <span>
+            Remaining:{" "}
+            {formatCurrency(
+              financialData.monthlyBudget - financialData.monthlySpent,
+            )}
+          </span>
           <span>•</span>
-          <span>User: {userId}</span>
+          <span
+            className={
+              financialData.debtRisk === "HIGH"
+                ? "text-destructive"
+                : "text-primary"
+            }
+          >
+            Risk: {financialData.debtRisk}
+          </span>
         </div>
       </div>
 
@@ -258,7 +329,11 @@ const ChatPage = () => {
           >
             {m.role === "ai" && (
               <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center mr-1.5 flex-shrink-0 self-end">
-                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <img
+                  src="public/favicon.ico"
+                  alt="Logo"
+                  className="w-5 h-5 object-contain"
+                />
               </div>
             )}
             <div
@@ -279,8 +354,12 @@ const ChatPage = () => {
         ))}
         {typing && (
           <div className="flex items-center gap-1.5">
-            <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center mr-1.5 flex-shrink-0 self-end">
+              <img
+                src="public/favicon.ico"
+                alt="Logo"
+                className="w-5 h-5 object-contain"
+              />
             </div>
             <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1">
               {[0, 1, 2].map((i) => (
@@ -296,16 +375,7 @@ const ChatPage = () => {
         <div ref={bottomRef} />
       </div>
 
-      {/* Chat Stats */}
-      {msgs.length > 1 && (
-        <div className="px-2 py-1">
-          <p className="text-[9px] text-muted-foreground text-right">
-            {Math.floor(msgs.length / 2)} conversations · History saved
-          </p>
-        </div>
-      )}
-
-      {/* Input */}
+      {/* Suggestions */}
       <div className="border-t border-border pt-3">
         <div className="flex gap-1.5 flex-wrap mb-2.5">
           {SUGGESTIONS.map((s) => (
@@ -318,17 +388,19 @@ const ChatPage = () => {
             </button>
           ))}
         </div>
+
+        {/* Input */}
         <div className="flex gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send(input)}
-            placeholder="Ask SANSOM anything..."
+            placeholder="Ask SAMSOM about your finances..."
             className="flex-1 px-3.5 py-3 rounded-xl border-[1.5px] border-border text-sm text-foreground outline-none focus:border-primary transition-colors bg-card"
           />
           <button
             onClick={() => send(input)}
-            disabled={typing}
+            disabled={typing || !input.trim()}
             className="gradient-primary text-primary-foreground rounded-xl px-4 py-3 font-semibold text-sm shadow-primary hover:shadow-primary-hover transition-all flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4" />

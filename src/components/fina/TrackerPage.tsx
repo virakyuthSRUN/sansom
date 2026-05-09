@@ -216,7 +216,7 @@ const TrackerPage = () => {
   }, [bankTransactions]);
 
   // Get user's monthly budget from profile (default to 5000 if not set)
-  const monthlyBudget = profile?.monthly_budget || 5000;
+  const monthlyBudget = profile?.monthly_budget || 50000;
 
   // --------------------------------------------------------------------------
   // Sync with FinancialDataContext
