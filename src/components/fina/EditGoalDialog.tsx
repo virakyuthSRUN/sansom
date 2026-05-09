@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Target,
@@ -35,41 +35,54 @@ const COLOR_OPTIONS = [
   "#eab308",
 ];
 
-
-interface AddGoalDialogProps {
+interface EditGoalDialogProps {
   open: boolean;
+  goal: Goal | null;
   onClose: () => void;
-  onGoalAdded: (goal: Omit<Goal, "id">) => void;
+  onGoalUpdated: (id: string, updates: Partial<Goal>) => void;
 }
 
-const AddGoalDialog = ({ open, onClose, onGoalAdded }: AddGoalDialogProps) => {
+const EditGoalDialog = ({
+  open,
+  goal,
+  onClose,
+  onGoalUpdated,
+}: EditGoalDialogProps) => {
   const { currency } = useCurrency();
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
+  const [saved, setSaved] = useState("");
   const [deadline, setDeadline] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("Target");
   const [selectedColor, setSelectedColor] = useState("#3b82f6");
 
-  if (!open) return null;
+  useEffect(() => {
+    if (goal) {
+      setName(goal.name);
+      setTarget(String(parseFloat((goal.target / currency.rate).toFixed(2))));
+      setSaved(String(parseFloat((goal.saved / currency.rate).toFixed(2))));
+      setDeadline(goal.deadline === "No deadline" ? "" : goal.deadline);
+      setSelectedIcon(goal.icon);
+      setSelectedColor(goal.color);
+    }
+  }, [goal, currency.rate]);
 
+  // ← ADD THIS — must be after all hooks
+  if (!open || !goal) return null;
+
+  // handleSubmit — multiply back to MYR when saving
   const handleSubmit = () => {
-    if (!name || !target) return;
-
-    onGoalAdded({
+    if (!name || !target || !goal) return;
+    onGoalUpdated(goal.id, {
       name,
       icon: selectedIcon,
-      target: parseFloat(target) / currency.rate, // ← divide by rate
-      saved: 0,
+      // user typed in display currency → multiply back to MYR
+      target: parseFloat((parseFloat(target) * currency.rate).toFixed(2)),
+      saved: parseFloat((parseFloat(saved) * currency.rate).toFixed(2)),
       color: selectedColor,
       deadline: deadline || "No deadline",
     });
-
-    // Reset form
-    setName("");
-    setTarget("");
-    setDeadline("");
-    setSelectedIcon("Target");
-    setSelectedColor("#3b82f6");
+    onClose();
   };
 
   return (
@@ -82,9 +95,7 @@ const AddGoalDialog = ({ open, onClose, onGoalAdded }: AddGoalDialogProps) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-bold text-foreground">
-            New Savings Goal
-          </h2>
+          <h2 className="text-base font-bold text-foreground">Edit Goal</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center"
@@ -106,17 +117,31 @@ const AddGoalDialog = ({ open, onClose, onGoalAdded }: AddGoalDialogProps) => {
             />
           </div>
 
-          <div>
-            <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
-              Target Amount ({currency.symbol})
-            </label>
-            <input
-              type="number"
-              className="w-full px-3 py-2.5 rounded-xl border-[1.5px] border-border text-[13px] text-foreground bg-card outline-none focus:border-primary transition-colors"
-              placeholder="e.g. 3500"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
+                Target ({currency.symbol})
+              </label>
+              <input
+                type="number"
+                className="w-full px-3 py-2.5 rounded-xl border-[1.5px] border-border text-[13px] text-foreground bg-card outline-none focus:border-primary transition-colors"
+                placeholder="e.g. 3500"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
+                Saved ({currency.symbol})
+              </label>
+              <input
+                type="number"
+                className="w-full px-3 py-2.5 rounded-xl border-[1.5px] border-border text-[13px] text-foreground bg-card outline-none focus:border-primary transition-colors"
+                placeholder="e.g. 500"
+                value={saved}
+                onChange={(e) => setSaved(e.target.value)}
+              />
+            </div>
           </div>
 
           <div>
@@ -161,10 +186,45 @@ const AddGoalDialog = ({ open, onClose, onGoalAdded }: AddGoalDialogProps) => {
                 <button
                   key={c}
                   onClick={() => setSelectedColor(c)}
-                  className={`w-7 h-7 rounded-full border-2 transition-all ${selectedColor === c ? "border-foreground scale-110" : "border-transparent"}`}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${
+                    selectedColor === c
+                      ? "border-foreground scale-110"
+                      : "border-transparent"
+                  }`}
                   style={{ background: c }}
                 />
               ))}
+            </div>
+          </div>
+
+          {/* Progress preview */}
+          <div className="bg-muted rounded-xl p-3">
+            <div className="flex justify-between mb-1.5">
+              <span className="text-[11px] text-muted-foreground">
+                Progress preview
+              </span>
+              <span
+                className="text-[11px] font-semibold"
+                style={{ color: selectedColor }}
+              >
+                {Math.min(
+                  100,
+                  Math.round(
+                    ((parseFloat(saved) || 0) / (parseFloat(target) || 1)) *
+                      100,
+                  ),
+                )}
+                %
+              </span>
+            </div>
+            <div className="h-2 bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${Math.min(100, Math.round(((parseFloat(saved) || 0) / (parseFloat(target) || 1)) * 100))}%`,
+                  background: `linear-gradient(90deg, ${selectedColor}90, ${selectedColor})`,
+                }}
+              />
             </div>
           </div>
 
@@ -173,7 +233,7 @@ const AddGoalDialog = ({ open, onClose, onGoalAdded }: AddGoalDialogProps) => {
             disabled={!name || !target}
             className="w-full gradient-primary text-primary-foreground rounded-xl py-3 font-semibold text-sm shadow-primary hover:shadow-primary-hover transition-all mt-1 disabled:opacity-50"
           >
-            Create Goal
+            Save Changes
           </button>
         </div>
       </div>
@@ -181,4 +241,4 @@ const AddGoalDialog = ({ open, onClose, onGoalAdded }: AddGoalDialogProps) => {
   );
 };
 
-export default AddGoalDialog;
+export default EditGoalDialog;

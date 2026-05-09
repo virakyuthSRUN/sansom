@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { GOALS as DEFAULT_GOALS } from '@/lib/constants';
 
 export interface Goal {
   id: string;
@@ -19,13 +20,22 @@ interface GoalsContextType {
 
 const GoalsContext = createContext<GoalsContextType | undefined>(undefined);
 
-// Default goals from your constants
-import { GOALS as DEFAULT_GOALS } from '@/lib/constants';
+const sanitizeGoal = (g: any): Goal => ({
+  ...g,
+  saved: Math.round(Number(g.saved) * 100) / 100,
+  target: Math.round(Number(g.target) * 100) / 100,
+});
 
 export const GoalsProvider = ({ children }: { children: React.ReactNode }) => {
   const [goals, setGoals] = useState<Goal[]>(() => {
-    const saved = localStorage.getItem('sansom-goals');
-    return saved ? JSON.parse(saved) : DEFAULT_GOALS;
+    try {
+      const saved = localStorage.getItem('sansom-goals');
+      return saved
+        ? JSON.parse(saved).map(sanitizeGoal)
+        : DEFAULT_GOALS.map(sanitizeGoal);
+    } catch {
+      return DEFAULT_GOALS.map(sanitizeGoal);
+    }
   });
 
   useEffect(() => {
@@ -33,10 +43,7 @@ export const GoalsProvider = ({ children }: { children: React.ReactNode }) => {
   }, [goals]);
 
   const addGoal = (goal: Omit<Goal, 'id'>) => {
-    const newGoal = {
-      ...goal,
-      id: Date.now().toString(),
-    };
+    const newGoal = sanitizeGoal({ ...goal, id: Date.now().toString() });
     setGoals(prev => [...prev, newGoal]);
   };
 
@@ -45,7 +52,9 @@ export const GoalsProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const updateGoal = (id: string, updates: Partial<Goal>) => {
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+    setGoals(prev =>
+      prev.map(g => g.id === id ? sanitizeGoal({ ...g, ...updates }) : g)
+    );
   };
 
   return (
