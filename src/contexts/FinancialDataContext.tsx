@@ -1,4 +1,3 @@
-// contexts/FinancialDataContext.tsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useUserProfile } from "./UserProfileContext";
 import { GOALS } from "@/lib/constants";
@@ -52,6 +51,7 @@ export interface FinancialData {
   transactions: Transaction[];
   aiTip: string;
   monthlyTrend: { label: string; val: number; active?: boolean }[];
+  startingBalance: number;
 }
 
 interface FinancialDataContextType {
@@ -64,9 +64,12 @@ interface FinancialDataContextType {
   removeBNPL: (index: number) => void;
   updateFromTracker: (trackerData: {
     totalSpent: number;
+    totalIncome: number;
     transactions: Transaction[];
     isConnected: boolean;
+    startingBalance: number;
   }) => void;
+  updateStartingBalance: (balance: number) => void;
 }
 
 const defaultMonthlyTrend = [
@@ -78,9 +81,10 @@ const defaultMonthlyTrend = [
   { label: "Mar", val: 620, active: true },
 ];
 
+// No hardcoded budget — always comes from profile or 0
 const getDefaultData = (monthlyBudget: number): FinancialData => ({
   balance: 0,
-  moneyIn: 50000,
+  moneyIn: 0,
   moneyOut: 0,
   monthlySpent: 0,
   monthlyBudget,
@@ -94,12 +98,11 @@ const getDefaultData = (monthlyBudget: number): FinancialData => ({
   transactions: [],
   aiTip: "Connect your bank account to see personalized insights.",
   monthlyTrend: defaultMonthlyTrend.map((t) => ({ ...t, val: 0 })),
+  startingBalance: 0,
 });
 
-// ← FIX: single line, no multi-line generic
 const FinancialDataContext = createContext<FinancialDataContextType | undefined>(undefined);
 
-// ── Risk helper ───────────────────────────────────────────────────────
 const calcRisk = (rate: number): "LOW" | "MEDIUM" | "HIGH" =>
   rate < 15 ? "LOW" : rate <= 25 ? "MEDIUM" : "HIGH";
 
@@ -110,45 +113,78 @@ export const FinancialDataProvider = ({
 }) => {
   const { profile } = useUserProfile();
   const [loading, setLoading] = useState(false);
+
+  // Use profile budget if available, otherwise 0 (no hardcoded fallback)
   const [data, setData] = useState<FinancialData>(() =>
-    getDefaultData(profile?.monthly_budget || 50000),
+    getDefaultData(profile?.monthly_budget ?? 0),
   );
 
+  // Sync monthlyBudget whenever profile changes
   useEffect(() => {
-    if (profile?.monthly_budget) {
-      setData((prev) => ({
-        ...prev,
-        monthlyBudget: profile.monthly_budget,
-        spendPct: prev.isBankConnected
-          ? Math.round((prev.monthlySpent / profile.monthly_budget) * 100)
-          : 0,
-      }));
+    if (profile?.monthly_budget != null) {
+      setData((prev) => {
+        const budget = profile.monthly_budget;
+        return {
+          ...prev,
+          monthlyBudget: budget,
+          // Recalculate spendPct with the new budget
+          spendPct:
+            budget > 0
+              ? Math.round((prev.monthlySpent / budget) * 100)
+              : 0,
+        };
+      });
     }
-  }, [profile]);
+  }, [profile?.monthly_budget]);
+
+  const updateStartingBalance = (balance: number) => {
+    setData((prev) => ({
+      ...prev,
+      startingBalance: balance,
+      // Recalculate balance: starting + income - spending
+      balance: balance + prev.moneyIn - prev.moneyOut,
+    }));
+  };
 
   const updateFromTracker = (trackerData: {
     totalSpent: number;
+    totalIncome: number;
     transactions: Transaction[];
     isConnected: boolean;
+    startingBalance: number;
   }) => {
     if (trackerData.isConnected) {
-      setData((prev) => ({
-        ...prev,
-        isBankConnected: true,
-        monthlySpent: trackerData.totalSpent,
-        transactions: trackerData.transactions,
-        spendPct: Math.round(
-          (trackerData.totalSpent / prev.monthlyBudget) * 100,
-        ),
-        moneyOut: trackerData.totalSpent,
-        balance: (prev.moneyIn || 14000) - trackerData.totalSpent,
-        aiTip: generateAITip(
-          trackerData.totalSpent,
-          prev.monthlyBudget,
-          trackerData.transactions,
-        ),
-        monthlyTrend: updateMonthlyTrend(trackerData.transactions),
-      }));
+      setData((prev) => {
+        const budget = prev.monthlyBudget;
+        // Core balance formula: starting + income - spending
+        const currentBalance =
+          trackerData.startingBalance +
+          trackerData.totalIncome -
+          trackerData.totalSpent;
+
+        return {
+          ...prev,
+          isBankConnected: true,
+          monthlySpent: trackerData.totalSpent,
+          moneyIn: trackerData.totalIncome,
+          moneyOut: trackerData.totalSpent,
+          transactions: trackerData.transactions,
+          startingBalance: trackerData.startingBalance,
+          balance: currentBalance,
+          spendPct:
+            budget > 0
+              ? Math.round((trackerData.totalSpent / budget) * 100)
+              : 0,
+          aiTip: generateAITip(
+            trackerData.totalSpent,
+            budget,
+            trackerData.transactions,
+            trackerData.totalIncome,
+            trackerData.startingBalance,
+          ),
+          monthlyTrend: updateMonthlyTrend(trackerData.transactions),
+        };
+      });
 
       try {
         const trackerUserId = localStorage.getItem("tracker_user_id");
@@ -157,7 +193,9 @@ export const FinancialDataProvider = ({
             `financial-data-${trackerUserId}`,
             JSON.stringify({
               totalSpent: trackerData.totalSpent,
+              totalIncome: trackerData.totalIncome,
               transactions: trackerData.transactions,
+              startingBalance: trackerData.startingBalance,
             }),
           );
         }
@@ -165,7 +203,7 @@ export const FinancialDataProvider = ({
         console.error("Error storing financial data:", error);
       }
     } else {
-      // Keep BNPLs and goals when disconnecting
+      // On disconnect: reset to defaults but keep goals, BNPLs, and budget
       setData((prev) => ({
         ...getDefaultData(prev.monthlyBudget),
         goals: prev.goals,
@@ -179,15 +217,35 @@ export const FinancialDataProvider = ({
     totalSpent: number,
     budget: number,
     transactions: Transaction[],
+    totalIncome: number,
+    startingBalance: number,
   ): string => {
-    if (totalSpent === 0)
+    if (totalSpent === 0 && totalIncome === 0)
       return "Start tracking your spending to get personalized insights!";
-    const percentage = (totalSpent / budget) * 100;
-    if (percentage > 80)
-      return `You've used ${percentage.toFixed(0)}% of your budget. Consider reducing non-essential spending for the rest of the month.`;
-    if (percentage > 50)
-      return `You're at ${percentage.toFixed(0)}% of your budget. You're on track for a balanced month!`;
-    return `Great job! You've only used ${percentage.toFixed(0)}% of your budget. Keep up the good work!`;
+
+    const currentBalance = startingBalance + totalIncome - totalSpent;
+
+    if (currentBalance < 0) {
+      return `⚠️ Your balance is negative. Consider reducing expenses or adding income.`;
+    }
+
+    // Only show budget tip if budget is configured
+    if (budget > 0) {
+      const percentage = (totalSpent / budget) * 100;
+      if (percentage > 80)
+        return `You've used ${percentage.toFixed(0)}% of your budget. Consider reducing non-essential spending.`;
+      if (percentage > 50)
+        return `You're at ${percentage.toFixed(0)}% of your budget. You're on track for a balanced month!`;
+      return `Great job! You've only used ${percentage.toFixed(0)}% of your budget. Keep it up!`;
+    }
+
+    // No budget set — tip based on cash flow
+    const netFlow = totalIncome - totalSpent;
+    if (netFlow < 0)
+      return `You're spending more than you're earning this month. Review your expenses.`;
+    const savingsRate =
+      totalIncome > 0 ? ((netFlow / totalIncome) * 100).toFixed(0) : "0";
+    return `You're saving ${savingsRate}% of your income this month. Great work!`;
   };
 
   const updateMonthlyTrend = (
@@ -197,7 +255,11 @@ export const FinancialDataProvider = ({
       ...item,
       val:
         index === 5
-          ? Math.round(transactions.reduce((sum, t) => sum + t.amount, 0))
+          ? Math.round(
+              transactions
+                .filter((t) => t.amount < 0)
+                .reduce((sum, t) => sum + Math.abs(t.amount), 0),
+            )
           : item.val,
       active: index === 5,
     }));
@@ -229,19 +291,25 @@ export const FinancialDataProvider = ({
       id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
     setData((prev) => {
-      const newMonthlySpent = prev.monthlySpent + transaction.amount;
+      // Cash transactions are outflows (amount is already negative in tracker)
+      const spentDelta = Math.abs(transaction.amount);
+      const newMoneyOut = prev.moneyOut + spentDelta;
+      const newMonthlySpent = prev.monthlySpent + spentDelta;
       return {
         ...prev,
         transactions: [newTransaction, ...prev.transactions],
         monthlySpent: newMonthlySpent,
-        spendPct: Math.round((newMonthlySpent / prev.monthlyBudget) * 100),
-        moneyOut: newMonthlySpent,
-        balance: (prev.moneyIn || 14000) - newMonthlySpent,
+        moneyOut: newMoneyOut,
+        spendPct:
+          prev.monthlyBudget > 0
+            ? Math.round((newMonthlySpent / prev.monthlyBudget) * 100)
+            : 0,
+        // Balance decreases on spending
+        balance: prev.startingBalance + prev.moneyIn - newMoneyOut,
       };
     });
   };
 
-  // ── NEW: Add BNPL ─────────────────────────────────────────────────
   const addBNPL = (bnpl: Omit<BNPL, "risk">) => {
     setData((prev) => ({
       ...prev,
@@ -250,7 +318,6 @@ export const FinancialDataProvider = ({
     }));
   };
 
-  // ── NEW: Remove BNPL ──────────────────────────────────────────────
   const removeBNPL = (index: number) => {
     setData((prev) => ({
       ...prev,
@@ -267,9 +334,10 @@ export const FinancialDataProvider = ({
         loading,
         updateGoal,
         addTransaction,
-        addBNPL,        // ← NEW
-        removeBNPL,     // ← NEW
+        addBNPL,
+        removeBNPL,
         updateFromTracker,
+        updateStartingBalance,
       }}
     >
       {children}

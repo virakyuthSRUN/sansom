@@ -14,6 +14,37 @@ const Dashboard = ({ setPage }: DashboardProps) => {
   const { format } = useCurrency();
   const { data } = useFinancialData();
 
+  // When no budget is set, show spent vs total balance (starting + income)
+  // When budget is set, show spent vs budget
+  const hasBudget = data.monthlyBudget > 0;
+  const totalBalance = data.balance; // startingBalance + moneyIn - moneyOut
+  const totalAvailable = data.startingBalance + data.moneyIn; // before spending
+
+  const ringDenominator = hasBudget
+    ? data.monthlyBudget
+    : totalAvailable > 0
+      ? totalAvailable
+      : 0;
+
+  const ringPct =
+    ringDenominator > 0
+      ? Math.min(100, Math.round((data.monthlySpent / ringDenominator) * 100))
+      : 0;
+
+  const ringLabel = hasBudget
+    ? `${ringPct}%`
+    : ringDenominator > 0
+      ? `${ringPct}%`
+      : "—";
+
+  const ringSubLabel = hasBudget ? "used" : ringDenominator > 0 ? "spent" : "no data";
+
+  const ringFooter = hasBudget
+    ? `${format(data.monthlySpent)} / ${format(data.monthlyBudget)}`
+    : totalAvailable > 0
+      ? `${format(data.monthlySpent)} of ${format(totalAvailable)}`
+      : `${format(data.monthlySpent)} spent`;
+
   return (
     <div className="flex flex-col gap-4 animate-slide-up">
       {/* Hero Balance Card */}
@@ -22,12 +53,15 @@ const Dashboard = ({ setPage }: DashboardProps) => {
         <div className="absolute -bottom-8 right-8 w-20 h-20 rounded-full bg-white/[0.06]" />
         <p className="text-xs opacity-80 font-medium mb-1">Hello, User 👋</p>
         <p className="text-[11px] opacity-70 mb-4">Here's your financial snapshot</p>
-        <p className="text-[13px] opacity-85 font-medium mb-1.5">Balance</p>
-        <p className="text-[28px] sm:text-[34px] font-bold tracking-tight font-display">{format(data.balance)}</p>
+        <p className="text-[13px] opacity-85 font-medium mb-1.5">Current Balance</p>
+        {/* balance = startingBalance + moneyIn - moneyOut */}
+        <p className="text-[28px] sm:text-[34px] font-bold tracking-tight font-display">
+          {format(data.balance)}
+        </p>
         <div className="flex gap-3 sm:gap-4 mt-4">
           {[
-            { label: 'Money in', value: format(data.moneyIn), Icon: ArrowUpRight, bg: 'rgba(255,255,255,0.2)' },
-            { label: 'Money out', value: format(data.moneyOut), Icon: ArrowDownRight, bg: 'rgba(255,80,80,0.25)' },
+            { label: 'Money in',  value: format(data.moneyIn),  Icon: ArrowUpRight,   bg: 'rgba(255,255,255,0.2)'  },
+            { label: 'Money out', value: format(data.moneyOut), Icon: ArrowDownRight, bg: 'rgba(255,80,80,0.25)'  },
           ].map(item => (
             <div key={item.label} className="rounded-xl px-3 sm:px-3.5 py-2 flex-1" style={{ background: item.bg }}>
               <p className="text-[10px] opacity-80 mb-0.5 flex items-center gap-1">
@@ -47,7 +81,9 @@ const Dashboard = ({ setPage }: DashboardProps) => {
             {data.goals.length > 0 ? (
               <p className="text-[11px] text-muted-foreground">
                 {format(data.goals.reduce((s, g) => s + g.saved, 0))}{' '}
-                <span className="text-foreground font-medium">out of {format(data.goals.reduce((s, g) => s + g.target, 0))}</span>
+                <span className="text-foreground font-medium">
+                  out of {format(data.goals.reduce((s, g) => s + g.target, 0))}
+                </span>
               </p>
             ) : (
               <p className="text-[11px] text-muted-foreground">No goals yet</p>
@@ -68,7 +104,9 @@ const Dashboard = ({ setPage }: DashboardProps) => {
                     <DynamicIcon name={g.icon} className="w-4 h-4" style={{ color: g.color }} />
                   </div>
                 </div>
-                <span className="text-[9px] text-muted-foreground group-hover:text-primary transition-colors">{g.name.split(' ')[0]}</span>
+                <span className="text-[9px] text-muted-foreground group-hover:text-primary transition-colors">
+                  {g.name.split(' ')[0]}
+                </span>
               </button>
             );
           })}
@@ -86,11 +124,23 @@ const Dashboard = ({ setPage }: DashboardProps) => {
       {/* Budget + Spending Grid */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card rounded-2xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col items-center gap-2">
-          <p className="text-[11px] text-muted-foreground font-semibold self-start">Monthly Budget</p>
-          <RingChart pct={data.spendPct} size={88} label={`${data.spendPct}%`} sub="used" />
-          <p className="text-[11px] text-muted-foreground text-center">
-            {format(data.monthlySpent)} <span className="text-foreground font-semibold">/ {format(data.monthlyBudget)}</span>
+          <p className="text-[11px] text-muted-foreground font-semibold self-start">
+            {hasBudget ? "Monthly Budget" : "Spending"}
           </p>
+          <RingChart
+            pct={ringPct}
+            size={88}
+            label={ringLabel}
+            sub={ringSubLabel}
+          />
+          <p className="text-[11px] text-muted-foreground text-center">
+            {ringFooter}
+          </p>
+          {!hasBudget && (
+            <p className="text-[9px] text-muted-foreground text-center opacity-70">
+              % of total balance
+            </p>
+          )}
         </div>
         <div className="bg-card rounded-2xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
           <p className="text-[11px] text-muted-foreground font-semibold mb-3">Spending Trend</p>
@@ -129,9 +179,7 @@ const Dashboard = ({ setPage }: DashboardProps) => {
           </div>
           <p className="text-xs font-bold text-primary">SAMSOM's Tip</p>
         </div>
-        <p className="text-[13px] text-foreground leading-relaxed">
-          "{data.aiTip}"
-        </p>
+        <p className="text-[13px] text-foreground leading-relaxed">"{data.aiTip}"</p>
         <p className="text-[11px] text-primary mt-2 font-semibold">Ask SAMSOM more →</p>
       </div>
 
@@ -141,41 +189,51 @@ const Dashboard = ({ setPage }: DashboardProps) => {
           <p className="text-[13px] font-bold text-foreground">Recent Transactions</p>
           <button className="text-[11px] text-primary font-semibold" onClick={() => setPage('tracker')}>See all →</button>
         </div>
-        {data.transactions.slice(0, 3).map(e => (
-          <div key={e.id} className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${e.color}18` }}>
-                <DynamicIcon name={e.icon} className="w-5 h-5" style={{ color: e.color }} />
+        {data.transactions.length === 0 ? (
+          <p className="text-[12px] text-muted-foreground text-center py-4">
+            No transactions yet. Connect your bank in the Tracker tab.
+          </p>
+        ) : (
+          data.transactions.slice(0, 3).map(e => (
+            <div key={e.id} className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${e.color}18` }}>
+                  <DynamicIcon name={e.icon} className="w-5 h-5" style={{ color: e.color }} />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground">{e.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{e.cat}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[13px] font-semibold text-foreground">{e.name}</p>
-                <p className="text-[10px] text-muted-foreground">{e.cat}</p>
-              </div>
+              <p className="text-[13px] font-bold" style={{ color: e.cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
+                {e.amount >= 0 ? `+${format(e.amount)}` : `−${format(Math.abs(e.amount))}`}
+              </p>
             </div>
-            <p className="text-[13px] font-bold" style={{ color: e.cat === 'BNPL' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}>
-              −{format(e.amount)}
-            </p>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Top 3 Spends */}
-      <div className="bg-card rounded-2xl p-4 shadow-sm">
-        <p className="text-[13px] font-bold text-foreground mb-3">Top 3 spends this month</p>
-        <div className="grid grid-cols-3 gap-2">
-          {[...data.transactions]
-            .sort((a, b) => b.amount - a.amount)
-            .slice(0, 3)
-            .map(item => (
-              <div key={item.id} className="rounded-xl p-3 flex flex-col items-center gap-1.5" style={{ background: `${item.color}10` }}>
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${item.color}20` }}>
-                  <DynamicIcon name={item.icon} className="w-4 h-4" style={{ color: item.color }} />
+      {data.transactions.filter(t => t.amount < 0).length > 0 && (
+        <div className="bg-card rounded-2xl p-4 shadow-sm">
+          <p className="text-[13px] font-bold text-foreground mb-3">Top 3 spends this month</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[...data.transactions]
+              .filter(t => t.amount < 0)
+              .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+              .slice(0, 3)
+              .map(item => (
+                <div key={item.id} className="rounded-xl p-3 flex flex-col items-center gap-1.5" style={{ background: `${item.color}10` }}>
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${item.color}20` }}>
+                    <DynamicIcon name={item.icon} className="w-4 h-4" style={{ color: item.color }} />
+                  </div>
+                  <p className="text-[11px] font-bold text-foreground text-center">{item.name}</p>
+                  <p className="text-[12px] font-bold" style={{ color: item.color }}>{format(Math.abs(item.amount))}</p>
                 </div>
-                <p className="text-[12px] font-bold text-foreground">{format(item.amount)}</p>
-              </div>
-            ))}
+              ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

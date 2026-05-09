@@ -16,112 +16,144 @@ const convertCurrency = (amountInMYR, currencyCode) => {
   return amountInMYR * rate;
 };
 
-// Initialize Groq service with API key
-console.log(
-  "🔑 Initializing Groq service with API key:",
-  !!process.env.GROQ_API_KEY,
-);
+// Initialize Groq service
+console.log("🔑 Initializing Groq service with API key:", !!process.env.GROQ_API_KEY);
 const groq = new GroqService(process.env.GROQ_API_KEY);
 
 // POST /api/chat
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { userId, message, context, currency } = req.body;
-    
+
     // Get currency code and symbol (default to MYR)
-    const currencyCode = currency?.code || 'MYR';
-    const currencySymbol = currency?.symbol || 'RM';
+    const currencyCode = currency?.code || "MYR";
+    const currencySymbol = currency?.symbol || "RM";
+
+    console.log("=".repeat(50));
+    console.log("📨 Chat request received:");
+    console.log("User:", userId);
+    console.log("Message:", message);
+    console.log("Currency:", currency);
     
-    console.log('=' .repeat(50));
-    console.log('📨 Chat request received:');
-    console.log('User:', userId);
-    console.log('Message:', message);
-    console.log('Currency:', currency);
-    console.log('Context from frontend:', {
-      monthlySpent: context?.monthlySpent,
+    // Log all context data received
+    console.log("📊 Full Context from frontend:", {
+      startingBalance: context?.startingBalance,
+      totalIncome: context?.totalIncome,
+      totalSpent: context?.totalSpent,
+      currentBalance: context?.currentBalance,
+      netCashFlow: context?.netCashFlow,
+      savingsRate: context?.savingsRate,
       monthlyBudget: context?.monthlyBudget,
-      debtRisk: context?.debtRisk,
+      hasBudget: context?.hasBudget,
       bnplCount: context?.bnplCount,
       bnplTotal: context?.bnplTotal,
-      balance: context?.balance,
+      bnplMonthly: context?.bnplMonthly,
+      dtiRatio: context?.dtiRatio,
+      debtRiskScore: context?.debtRiskScore,
+      debtRisk: context?.debtRisk,
+      transactionCount: context?.transactionCount,
     });
-    console.log('=' .repeat(50));
-    
-    // Get raw amounts in MYR from context
-    const spentMYR = Number(context?.monthlySpent) || 0;
-    const budgetMYR = Number(context?.monthlyBudget) || 10500;
-    const remainingMYR = budgetMYR - spentMYR;
-    const balanceMYR = Number(context?.balance) || remainingMYR;
-    const bnplTotalMYR = Number(context?.bnplTotal) || 0;
-    
-    // Convert amounts to selected currency
-    const spent = convertCurrency(spentMYR, currencyCode);
-    const budget = convertCurrency(budgetMYR, currencyCode);
-    const remaining = convertCurrency(remainingMYR, currencyCode);
-    const balance = convertCurrency(balanceMYR, currencyCode);
-    const bnplTotal = convertCurrency(bnplTotalMYR, currencyCode);
-    
-    // Calculate spending percentage (based on original MYR values, percentage is same)
-    const spentPercent = budgetMYR > 0 ? (spentMYR / budgetMYR) * 100 : 0;
-    
-    // Calculate risk score based on real data
+    console.log("=".repeat(50));
+
+    // Extract ALL data from context (use frontend-provided values)
+    const startingBalance = Number(context?.startingBalance) || 0;
+    const totalIncome = Number(context?.totalIncome) || 0;
+    const totalSpent = Number(context?.totalSpent) || 0;
+    const currentBalance = Number(context?.currentBalance) || 0;
+    const netCashFlow = Number(context?.netCashFlow) || 0;
+    const savingsRate = Number(context?.savingsRate) || 0;
+    const monthlyBudget = Number(context?.monthlyBudget) || 0;
+    const hasBudget = context?.hasBudget || false;
     const bnplCount = Number(context?.bnplCount) || 0;
-    let riskScore = 0;
-    if (bnplCount > 3 || spentPercent > 90) {
-      riskScore = 80 + Math.min(20, (bnplCount - 3) * 5);
-    } else if (bnplCount > 1 || spentPercent > 70) {
-      riskScore = 40 + (bnplCount * 10) + (spentPercent - 70);
-    } else if (bnplCount > 0) {
-      riskScore = 20 + (bnplCount * 10);
-    } else {
-      riskScore = Math.min(30, spentPercent);
-    }
-    riskScore = Math.min(100, Math.round(riskScore));
-    
+    const bnplTotal = Number(context?.bnplTotal) || 0;
+    const bnplMonthly = Number(context?.bnplMonthly) || 0;
+    const dtiRatio = Number(context?.dtiRatio) || 0;
+    const debtRiskScore = Number(context?.debtRiskScore) || 0;
+    const debtRisk = context?.debtRisk || "LOW";
+
+    // Convert amounts to selected currency
+    const spentConverted = convertCurrency(totalSpent, currencyCode);
+    const budgetConverted = convertCurrency(monthlyBudget, currencyCode);
+    const remainingConverted = convertCurrency(monthlyBudget - totalSpent, currencyCode);
+    const balanceConverted = convertCurrency(currentBalance, currencyCode);
+    const bnplTotalConverted = convertCurrency(bnplTotal, currencyCode);
+    const bnplMonthlyConverted = convertCurrency(bnplMonthly, currencyCode);
+    const incomeConverted = convertCurrency(totalIncome, currencyCode);
+    const netCashFlowConverted = convertCurrency(netCashFlow, currencyCode);
+
+    // Calculate spending percentage
+    const spentPercent = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
+
     // Determine if over budget
-    const isOverBudget = spent > budget;
-    const overspentAmount = isOverBudget ? spent - budget : 0;
-    
-    console.log('📊 Calculated AI Context (converted to selected currency):', {
-      spent: spent.toFixed(2),
-      budget: budget.toFixed(2),
-      remaining: remaining.toFixed(2),
-      spentPercent: spentPercent.toFixed(1) + '%',
+    const isOverBudget = totalSpent > monthlyBudget;
+    const overspentAmount = isOverBudget ? totalSpent - monthlyBudget : 0;
+
+    console.log("📊 Processed AI Context (converted to selected currency):", {
+      startingBalance: startingBalance,
+      totalIncome: incomeConverted.toFixed(2),
+      totalSpent: spentConverted.toFixed(2),
+      currentBalance: balanceConverted.toFixed(2),
+      netCashFlow: netCashFlowConverted.toFixed(2),
+      savingsRate: savingsRate.toFixed(1) + "%",
+      monthlyBudget: budgetConverted.toFixed(2),
+      hasBudget,
+      bnplCount,
+      bnplTotal: bnplTotalConverted.toFixed(2),
+      bnplMonthly: bnplMonthlyConverted.toFixed(2),
+      dtiRatio: dtiRatio.toFixed(1) + "%",
+      debtRiskScore,
+      debtRisk,
+      spentPercent: spentPercent.toFixed(1) + "%",
       isOverBudget,
       overspentAmount: overspentAmount.toFixed(2),
-      riskScore,
-      bnplCount,
-      bnplTotal: bnplTotal.toFixed(2),
-      balance: balance.toFixed(2),
       currencySymbol,
       currencyCode,
     });
-    
+
     const aiContext = {
-      balance: balance,
-      spent: spent,
-      budget: budget,
-      remaining: remaining,
+      // Financial summary
+      startingBalance: startingBalance,
+      totalIncome: incomeConverted,
+      totalSpent: spentConverted,
+      currentBalance: balanceConverted,
+      netCashFlow: netCashFlowConverted,
+      savingsRate: savingsRate,
+      
+      // Budget info
+      monthlyBudget: budgetConverted,
+      hasBudget: hasBudget,
+      remainingBudget: Math.max(0, budgetConverted - spentConverted),
+      spentPercent: spentPercent,
       isOverBudget: isOverBudget,
       overspentAmount: overspentAmount,
-      riskScore: riskScore,
+      
+      // BNPL info
       bnplCount: bnplCount,
-      bnplTotal: bnplTotal,
+      bnplTotal: bnplTotalConverted,
+      bnplMonthly: bnplMonthlyConverted,
+      dtiRatio: dtiRatio,
+      
+      // Risk assessment (use frontend-calculated values)
+      riskScore: debtRiskScore,
+      debtRisk: debtRisk,
+      
+      // Transactions
       recentTransactions: context?.recentTransactions || [],
-      goals: context?.goals || [],
-      debtRisk: context?.debtRisk || (riskScore > 70 ? 'HIGH' : riskScore > 40 ? 'MEDIUM' : 'LOW'),
+      transactionCount: context?.transactionCount || 0,
+      
+      // Currency
       currencySymbol: currencySymbol,
       currencyCode: currencyCode,
     };
-    
+
     const advice = await groq.getAdvice(aiContext, message);
-    
+
     res.json({ success: true, response: advice });
   } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get AI response' 
+    console.error("Chat error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get AI response",
     });
   }
 });

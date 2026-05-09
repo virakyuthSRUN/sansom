@@ -17,8 +17,8 @@ import {
   type CurrencyCode,
 } from "@/contexts/CurrencyContext";
 import { useTheme, type ThemeColor } from "@/contexts/ThemeContext";
-import { useFinancialData } from "@/contexts/FinancialDataContext"; // Add this import
-import { useUserProfile } from "@/contexts/UserProfileContext"; // Add this import
+import { useFinancialData } from "@/contexts/FinancialDataContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
 const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
   { color: "green", label: "Green", hsl: "hsl(162,100%,39%)" },
@@ -30,13 +30,13 @@ const THEME_OPTIONS: { color: ThemeColor; label: string; hsl: string }[] = [
 const SettingsPage = () => {
   const { currency, setCurrencyCode, format } = useCurrency();
   const { darkMode, toggleDarkMode, themeColor, setThemeColor } = useTheme();
-  const { data: financialData } = useFinancialData(); // Get financial data
-  const { profile } = useUserProfile(); // Get user profile
+  const { data: financialData } = useFinancialData();
+  const { profile } = useUserProfile();
 
   const [notifications, setNotifications] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Use real user data from profile
+  // No hardcoded fallback for budget — 0 means unset
   const userData = {
     name: profile?.full_name || "User",
     email: profile?.email || "user@gmail.com",
@@ -48,24 +48,36 @@ const SettingsPage = () => {
           year: "numeric",
         })
       : "March 2026",
-    monthlyBudget: profile?.monthly_budget || 50000,
+    monthlyBudget: profile?.monthly_budget ?? 0,
   };
 
   const handleCurrencyChange = async (code: CurrencyCode) => {
     setSaving(true);
     setCurrencyCode(code);
-    // Simulate API call
     setTimeout(() => setSaving(false), 500);
   };
 
-  // Calculate spending percentage
-  const spentPercentage = Math.min(
-    Math.round(
-      ((financialData?.monthlySpent || 0) / (userData.monthlyBudget || 1)) *
-        100,
-    ),
-    100,
-  );
+  const monthlySpent = financialData?.monthlySpent || 0;
+  const monthlyBudget = userData.monthlyBudget;
+  const hasBudget = monthlyBudget > 0;
+
+  // Use totalBalance (starting + income) as denominator when no budget set
+  const totalBalance = financialData?.balance || 0;
+  const totalIncome = financialData?.moneyIn || 0;
+  const referenceAmount = hasBudget
+    ? monthlyBudget
+    : totalBalance > 0
+      ? totalBalance
+      : totalIncome;
+
+  const spentPercentage =
+    referenceAmount > 0
+      ? Math.min(Math.round((monthlySpent / referenceAmount) * 100), 100)
+      : 0;
+
+  const remaining = hasBudget
+    ? Math.max(0, monthlyBudget - monthlySpent)
+    : Math.max(0, referenceAmount - monthlySpent);
 
   return (
     <div className="flex flex-col gap-3.5 animate-slide-up">
@@ -153,42 +165,95 @@ const SettingsPage = () => {
           </p>
         )}
       </div>
-      {/* Budget Overview */}
+
+      {/* Budget / Balance Overview */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">
-          Budget Overview
+          {hasBudget ? "Budget Overview" : "Balance Overview"}
         </p>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-muted-foreground">Monthly Budget</span>
-          <span className="text-sm font-bold text-foreground">
-            {format(userData.monthlyBudget)}{" "}
-            {/* Changed from currency.format */}
-          </span>
-        </div>
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-muted-foreground">
-            Spent this month
-          </span>
-          <span className="text-sm font-semibold text-foreground">
-            {format(financialData?.monthlySpent || 0)}{" "}
-            {/* Changed from currency.format */}
-          </span>
-        </div>
-        {/* ... rest of the component ... */}
-        <div className="flex justify-between text-[10px]">
-          <span className="text-muted-foreground">
-            Used: {spentPercentage}%
-          </span>
-          <span className="text-muted-foreground">
-            Remaining:{" "}
-            {format(
-              (userData.monthlyBudget || 0) -
-                (financialData?.monthlySpent || 0),
-            )}{" "}
-            {/* Changed from currency.format */}
-          </span>
-        </div>
+
+        {hasBudget ? (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">
+                Monthly Budget
+              </span>
+              <span className="text-sm font-bold text-foreground">
+                {format(monthlyBudget)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">
+                Spent this month
+              </span>
+              <span className="text-sm font-semibold text-foreground">
+                {format(monthlySpent)}
+              </span>
+            </div>
+            <div className="h-1.5 bg-border rounded-full overflow-hidden mb-1.5">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${
+                  spentPercentage >= 100
+                    ? "bg-destructive"
+                    : spentPercentage >= 80
+                      ? "bg-warning"
+                      : "bg-primary"
+                }`}
+                style={{ width: `${spentPercentage}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px]">
+              <span className="text-muted-foreground">
+                Used: {spentPercentage}%
+              </span>
+              <span className="text-muted-foreground">
+                Remaining: {format(remaining)}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">
+                Current Balance
+              </span>
+              <span className="text-sm font-bold text-foreground">
+                {format(totalBalance)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">
+                Spent this month
+              </span>
+              <span className="text-sm font-semibold text-foreground">
+                {format(monthlySpent)}
+              </span>
+            </div>
+            {referenceAmount > 0 && (
+              <>
+                <div className="h-1.5 bg-border rounded-full overflow-hidden mb-1.5">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-700"
+                    style={{ width: `${spentPercentage}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-muted-foreground">
+                    {spentPercentage}% of balance spent
+                  </span>
+                  <span className="text-muted-foreground">
+                    Remaining: {format(remaining)}
+                  </span>
+                </div>
+              </>
+            )}
+            <p className="text-[10px] text-muted-foreground mt-2">
+              Set a monthly budget in your profile to track spending goals.
+            </p>
+          </>
+        )}
       </div>
+
       {/* Preferences */}
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">
@@ -282,7 +347,6 @@ const SettingsPage = () => {
       <div className="bg-card rounded-2xl p-4 shadow-sm">
         <p className="text-[13px] font-bold text-foreground mb-3.5">Account</p>
 
-        {/* Privacy & Security */}
         <div className="flex items-center justify-between py-3 border-b border-border cursor-pointer hover:bg-accent/50 transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
@@ -300,7 +364,6 @@ const SettingsPage = () => {
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </div>
 
-        {/* Log Out */}
         <div className="flex items-center justify-between py-3 cursor-pointer hover:bg-destructive/5 transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center">
@@ -319,7 +382,7 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      {/* Session Info - Now with real user ID */}
+      {/* Session Info */}
       <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
         <p className="text-[10px] text-muted-foreground text-center">
           Signed in as{" "}

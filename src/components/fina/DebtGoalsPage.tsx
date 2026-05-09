@@ -27,42 +27,142 @@ import EditGoalDialog from "./EditGoalDialog";
 // ── Helpers ───────────────────────────────────────────────────────────
 const MYR_TO_USD = 0.21;
 
-const getColor = (s: number) =>
-  s >= 80
-    ? "#ff4757"
-    : s >= 60
-      ? "#f97316"
-      : s >= 40
-        ? "#ffb300"
-        : s >= 20
-          ? "#3b82f6"
-          : "#00c896";
+// Calculate debt risk score based on BNPL data
+const calculateDebtRiskScore = (
+  income: number,
+  bnpls: any[],
+  monthlySpent: number,
+): number => {
+  if (bnpls.length === 0) return 0;
+  if (income <= 0) return 85;
 
-const getLabel = (s: number) =>
-  s >= 80
-    ? "CRITICAL"
-    : s >= 60
-      ? "HIGH RISK"
-      : s >= 40
-        ? "MEDIUM RISK"
-        : s >= 20
-          ? "LOW RISK"
-          : "SAFE";
+  const totalMonthlyDebt = bnpls.reduce(
+    (sum, b) => sum + (b.monthly || b.amount / 3),
+    0,
+  );
 
-const getBg = (s: number) =>
-  s >= 60
-    ? "hsl(0 72% 96%)"
-    : s >= 40
-      ? "hsl(var(--warning-light))"
-      : "hsl(var(--success-light))";
+  const monthlyDebtRatio = totalMonthlyDebt / income;
+  const spendingRatio = monthlySpent / income;
+  const loanCount = bnpls.length;
 
-const RiskIcon = ({ score }: { score: number }) => {
-  if (score >= 60) return <AlertOctagon className="w-4 h-4 inline mr-1" />;
-  if (score >= 40) return <AlertTriangle className="w-4 h-4 inline mr-1" />;
-  return <CheckCircle className="w-4 h-4 inline mr-1" />;
+  let score = 0;
+
+  // ── Debt-to-income (60 pts max)
+  if (monthlyDebtRatio >= 0.6) score += 60;
+  else if (monthlyDebtRatio >= 0.45) score += 50;
+  else if (monthlyDebtRatio >= 0.35) score += 40;
+  else if (monthlyDebtRatio >= 0.25) score += 30;
+  else if (monthlyDebtRatio >= 0.15) score += 20;
+  else if (monthlyDebtRatio >= 0.08) score += 10;
+
+  // ── Spending behavior (25 pts max)
+  if (spendingRatio >= 1.0) score += 25;
+  else if (spendingRatio >= 0.9) score += 20;
+  else if (spendingRatio >= 0.8) score += 15;
+  else if (spendingRatio >= 0.7) score += 10;
+  else if (spendingRatio >= 0.6) score += 5;
+
+  // ── Loan count (15 pts max)
+  if (loanCount >= 5) score += 15;
+  else if (loanCount >= 4) score += 12;
+  else if (loanCount >= 3) score += 9;
+  else if (loanCount >= 2) score += 6;
+  else if (loanCount >= 1) score += 3;
+
+  return Math.min(100, Math.round(score));
 };
 
+// Get risk advice
+const getRiskAdvice = (
+  score: number,
+  bnplCount: number,
+  totalBnplDebt: number,
+  dtiRatio: number,
+) => {
+  if (score >= 75) {
+    return `Your debt burden is dangerously high. Focus on reducing monthly repayments and avoid taking additional BNPL plans.`;
+  }
+
+  if (score >= 55) {
+    return `Your debt risk is elevated. Your monthly debt burden is ${dtiRatio.toFixed(
+      0,
+    )}% of your income. Try to keep this below 20%.`;
+  }
+
+  if (score >= 35) {
+    return `You currently have ${bnplCount} active BNPL plan${
+      bnplCount !== 1 ? "s" : ""
+    }. Your debt level is manageable, but should still be monitored carefully.`;
+  }
+
+  if (score >= 15) {
+    return `Your debt risk is low. Continue maintaining healthy spending and repayment habits.`;
+  }
+
+  if (score > 0) {
+    return `Excellent. Your repayment burden is minimal and currently well within a safe range.`;
+  }
+
+  return `Excellent! You have no active BNPL plans. Your debt risk score is 0/100.`;
+};
+
+const getColor = (score: number) => {
+  if (score >= 80) return "#ef4444"; // red
+  if (score >= 60) return "#f97316"; // orange
+  if (score >= 40) return "#fbbf24"; // yellow
+  if (score >= 20) return "#3b82f6"; // blue
+  return "#10b981"; // green
+};
+
+const getLabel = (score: number) => {
+  if (score >= 80) return "CRITICAL";
+  if (score >= 60) return "HIGH RISK";
+  if (score >= 40) return "MEDIUM RISK";
+  if (score >= 20) return "LOW RISK";
+  return "SAFE";
+};
+
+const getBg = (score: number) => {
+  if (score >= 60) return "hsl(0 72% 96%)";
+  if (score >= 40) return "hsl(var(--warning-light))";
+  return "hsl(var(--success-light))";
+};
+const getBNPLRisk = (
+  monthlyPayment: number,
+  income: number,
+): "LOW" | "MEDIUM" | "HIGH" => {
+  if (income <= 0) return "HIGH";
+
+  const ratio = (monthlyPayment / income) * 100;
+
+  if (ratio >= 35) return "HIGH";
+  if (ratio >= 20) return "MEDIUM";
+  return "LOW";
+};
+
+const RiskIcon = ({ score }: { score: number }) => {
+  if (score >= 75) {
+    return <AlertOctagon className="w-4 h-4 inline mr-1" />;
+  }
+
+  if (score >= 35) {
+    return <AlertTriangle className="w-4 h-4 inline mr-1" />;
+  }
+
+  return <CheckCircle className="w-4 h-4 inline mr-1" />;
+};
 type Tab = "debt" | "goals";
+
+// Define the RiskResult type to match what useRiskScore returns
+interface RiskResult {
+  score: number;
+  risk_score?: number;
+  label: string;
+  color: string;
+  advice: string;
+  source?: string;
+  bnpl_pct?: number;
+}
 
 const DebtGoalsPage = () => {
   const { format, currency } = useCurrency();
@@ -84,20 +184,45 @@ const DebtGoalsPage = () => {
     loans: "",
   });
   const [simScore, setSimScore] = useState<number | null>(null);
-  const [simResult, setSimResult] = useState<typeof mlResult>(null);
+  const [simResult, setSimResult] = useState<RiskResult | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [depositGoalId, setDepositGoalId] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
   const [showAddBNPL, setShowAddBNPL] = useState(false);
 
   // ── Auto-score on page load using real BNPL data ──────────────────
-  const [autoScore, setAutoScore] = useState<typeof mlResult>(null);
+  const [autoScore, setAutoScore] = useState<RiskResult | null>(null);
   const [autoLoading, setAutoLoading] = useState(false);
+
+  // Computed values - moved BEFORE useEffect that uses them
+  const totalBnplMYR = data.bnpls.reduce((acc, b) => acc + b.amount, 0);
+  const totalMonthlyMYR = data.bnpls.reduce(
+    (acc, b) => acc + (b.monthly || b.amount / 3),
+    0,
+  );
+  const dtiRatio =
+    data.moneyIn > 0 ? Math.round((totalMonthlyMYR / data.moneyIn) * 100) : 0;
 
   useEffect(() => {
     const runAutoScore = async () => {
       const totalBnpl = data.bnpls.reduce((acc, b) => acc + b.amount, 0);
       const income = data.moneyIn;
+
+      // If no BNPL, return local calculation with score 0
+      if (totalBnpl === 0 || data.bnpls.length === 0) {
+        setAutoScore({
+          score: 0,
+          risk_score: 0,
+          label: "NO DEBT RISK",
+          color: "#00c896",
+          advice:
+            "🎉 Excellent! You have no active BNPL plans. Your debt risk score is 0/100. Keep up the great financial habits!",
+          source: "local",
+          bnpl_pct: 0,
+        });
+        return;
+      }
+
       if (income <= 0) return;
 
       setAutoLoading(true);
@@ -110,7 +235,7 @@ const DebtGoalsPage = () => {
             body: JSON.stringify({
               income: income * MYR_TO_USD,
               bnpl_total: totalBnpl * MYR_TO_USD,
-              num_loans: data.bnplCount,
+              num_loans: data.bnpls.length,
               savings: (income - data.moneyOut) * MYR_TO_USD,
               bnpl_ratio: income > 0 ? totalBnpl / income : 0,
               savings_ratio:
@@ -122,29 +247,79 @@ const DebtGoalsPage = () => {
         );
         if (res.ok) {
           const d = await res.json();
-          setAutoScore(d);
+
+          const mlScore = d.score || d.risk_score || 0;
+
+          const localScore = calculateDebtRiskScore(
+            data.moneyIn,
+            data.bnpls,
+            data.monthlySpent,
+          );
+
+          // Hybrid calibrated score
+          const finalScore = Math.round(localScore * 0.7 + mlScore * 0.3);
+
+          setAutoScore({
+            score: finalScore,
+            risk_score: finalScore,
+            label: getLabel(finalScore),
+            color: getColor(finalScore),
+            advice: getRiskAdvice(
+              finalScore,
+              data.bnpls.length,
+              totalBnpl,
+              dtiRatio,
+            ),
+            source: "hybrid-ai",
+            bnpl_pct: dtiRatio,
+          });
         }
       } catch {
-        // silently fail — card falls back to static data
+        // Fall back to local calculation
+        const localScore = calculateDebtRiskScore(
+          data.moneyIn,
+          data.bnpls,
+          data.monthlySpent,
+        );
+        setAutoScore({
+          score: localScore,
+          risk_score: localScore,
+          label: getLabel(localScore),
+          color: getColor(localScore),
+          advice: getRiskAdvice(
+            localScore,
+            data.bnpls.length,
+            totalBnpl,
+            dtiRatio,
+          ),
+          source: "local",
+          bnpl_pct: dtiRatio,
+        });
       } finally {
         setAutoLoading(false);
       }
     };
 
     runAutoScore();
-  }, [data.moneyIn, data.moneyOut, data.bnplCount]);
+  }, [
+    data.moneyIn,
+    data.moneyOut,
+    data.bnpls,
+    data.monthlySpent,
+    data.monthlyBudget,
+    dtiRatio,
+  ]);
 
   // Use auto ML score for the main card, fallback to static
-  const mainScore = autoScore?.score ?? data.debtScore;
-  const mainLabel = autoScore?.label ?? getLabel(data.debtScore);
-  const mainColor = autoScore?.color ?? getColor(data.debtScore);
-  const mainAdvice = autoScore?.advice ?? null;
-
-  // Computed debt-to-income ratio from real data
-  const totalBnplMYR = data.bnpls.reduce((acc, b) => acc + b.amount, 0);
-  const totalMonthlyMYR = data.bnpls.reduce((acc, b) => acc + b.monthly, 0);
-  const dtiRatio =
-    data.moneyIn > 0 ? Math.round((totalMonthlyMYR / data.moneyIn) * 100) : 0;
+  const mainScore =
+    autoScore?.score ?? (data.bnpls.length === 0 ? 0 : data.debtScore);
+  const mainLabel =
+    autoScore?.label ??
+    (data.bnpls.length === 0 ? "NO DEBT RISK" : getLabel(data.debtScore));
+  const mainColor = autoScore?.color ?? getColor(mainScore);
+  const mainAdvice =
+    autoScore?.advice ??
+    getRiskAdvice(mainScore, data.bnpls.length, totalBnplMYR, dtiRatio);
 
   // ── Simulator ─────────────────────────────────────────────────────
   const simulate = async () => {
@@ -176,7 +351,21 @@ const DebtGoalsPage = () => {
 
   // Keep simResult in sync with mlResult
   useEffect(() => {
-    if (mlResult) setSimResult(mlResult);
+    if (mlResult) {
+      setSimResult({
+        score: mlResult.score || mlResult.risk_score || 0,
+        risk_score: mlResult.risk_score || mlResult.score || 0,
+        label:
+          mlResult.label ||
+          getLabel(mlResult.score || mlResult.risk_score || 0),
+        color:
+          mlResult.color ||
+          getColor(mlResult.score || mlResult.risk_score || 0),
+        advice: mlResult.advice || "",
+        source: mlResult.source,
+        bnpl_pct: mlResult.bnpl_pct,
+      });
+    }
   }, [mlResult]);
 
   const displayScore = simResult?.score ?? simScore;
@@ -231,7 +420,7 @@ const DebtGoalsPage = () => {
 
       {tab === "debt" ? (
         <>
-          {/* ── Main Score Card (ML-powered) ── */}
+          {/* ── Main Score Card ── */}
           <div
             className="bg-card rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-5 border-2"
             style={{
@@ -257,7 +446,12 @@ const DebtGoalsPage = () => {
                 <p className="text-[11px] text-muted-foreground font-semibold">
                   YOUR DEBT RISK SCORE
                 </p>
-                {autoScore && (
+                {autoScore?.source === "local" && data.bnpls.length === 0 && (
+                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600">
+                    ✓ No BNPL
+                  </span>
+                )}
+                {autoScore?.source === "xgboost" && (
                   <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
                     🤖 ML
                   </span>
@@ -277,7 +471,7 @@ const DebtGoalsPage = () => {
                     Active BNPLs
                   </p>
                   <p className="text-sm font-bold text-foreground">
-                    {data.bnplCount}
+                    {data.bnpls.length}
                   </p>
                 </div>
                 <div className="w-px bg-border" />
@@ -290,24 +484,6 @@ const DebtGoalsPage = () => {
                   </p>
                 </div>
                 <div className="w-px bg-border" />
-                <div className="text-center">
-                  <p className="text-[10px] text-muted-foreground">
-                    Debt/Income
-                  </p>
-                  <p
-                    className="text-sm font-bold"
-                    style={{
-                      color:
-                        dtiRatio > 30
-                          ? "#ff4757"
-                          : dtiRatio > 20
-                            ? "#ffb300"
-                            : "#00c896",
-                    }}
-                  >
-                    {dtiRatio}%
-                  </p>
-                </div>
               </div>
 
               {mainAdvice && (
@@ -333,77 +509,93 @@ const DebtGoalsPage = () => {
             </div>
 
             {data.bnpls.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                No active BNPL plans
-              </p>
-            ) : (
-              data.bnpls.map((b, i) => (
-                <div
-                  key={i}
-                  className={`bg-muted rounded-xl p-3.5 ${i < data.bnpls.length - 1 ? "mb-2.5" : ""}`}
+              <div className="text-center py-8">
+                <p className="text-xs text-muted-foreground mb-2">
+                  No active BNPL plans
+                </p>
+                <button
+                  onClick={() => setShowAddBNPL(true)}
+                  className="text-xs text-primary font-semibold hover:underline"
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-[13px] font-bold text-foreground">
-                        {b.name}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {b.platform} · {b.rate}% p.a.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                        style={{
-                          background:
-                            b.risk === "HIGH"
-                              ? "hsl(0 72% 96%)"
-                              : "hsl(var(--warning-light))",
-                          color:
-                            b.risk === "HIGH"
-                              ? "hsl(var(--destructive))"
-                              : "hsl(var(--warning))",
-                        }}
-                      >
-                        {b.risk}
-                      </span>
-                      <button
-                        onClick={() => removeBNPL(i)}
-                        className="w-6 h-6 rounded-lg bg-card flex items-center justify-center hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      ["Outstanding", format(b.amount)],
-                      ["Monthly", format(b.monthly)],
-                      ["Status", b.status],
-                    ].map(([l, v]) => (
-                      <div key={l} className="text-center">
-                        <p className="text-[9px] text-muted-foreground mb-0.5">
-                          {l}
-                        </p>
-                        <p className="text-xs font-bold text-foreground">{v}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
-
-            {data.bnpls.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border flex justify-between items-center">
-                <p className="text-[11px] text-muted-foreground">
-                  Total monthly payments
-                </p>
-                <p className="text-[13px] font-bold text-foreground">
-                  {format(totalMonthlyMYR)}
-                </p>
+                  + Add your first BNPL plan
+                </button>
               </div>
+            ) : (
+              <>
+                {data.bnpls.map((b, i) => (
+                  <div
+                    key={i}
+                    className={`bg-muted rounded-xl p-3.5 ${i < data.bnpls.length - 1 ? "mb-2.5" : ""}`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-[13px] font-bold text-foreground">
+                          {b.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {b.platform} · {b.rate}% p.a.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{
+                            background:
+                              getBNPLRisk(
+                                b.monthly || b.amount / 3,
+                                data.moneyIn,
+                              ) === "HIGH"
+                                ? "hsl(0 72% 96%)"
+                                : "hsl(var(--warning-light))",
+                            color:
+                              getBNPLRisk(
+                                b.monthly || b.amount / 3,
+                                data.moneyIn,
+                              ) === "HIGH"
+                                ? "hsl(var(--destructive))"
+                                : "hsl(var(--warning))",
+                          }}
+                        >
+                          {getBNPLRisk(b.monthly || b.amount / 3, data.moneyIn)}
+                        </span>
+                        <button
+                          onClick={() => removeBNPL(i)}
+                          className="w-6 h-6 rounded-lg bg-card flex items-center justify-center hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        ["Outstanding", format(b.amount)],
+                        ["Monthly", format(b.monthly || b.amount / 3)],
+                        ["Status", b.status],
+                      ].map(([l, v]) => (
+                        <div key={l} className="text-center">
+                          <p className="text-[9px] text-muted-foreground mb-0.5">
+                            {l}
+                          </p>
+                          <p className="text-xs font-bold text-foreground">
+                            {v}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div className="mt-3 pt-3 border-t border-border flex justify-between items-center">
+                  <p className="text-[11px] text-muted-foreground">
+                    Total monthly payments
+                  </p>
+                  <p className="text-[13px] font-bold text-foreground">
+                    {format(totalMonthlyMYR)}
+                  </p>
+                </div>
+              </>
             )}
           </div>
+
           {/* Dialog */}
           <AddBNPLDialog
             open={showAddBNPL}
@@ -549,6 +741,7 @@ const DebtGoalsPage = () => {
           </div>
         </>
       ) : (
+        // Goals tab content
         <>
           {/* ── Summary Banner ── */}
           <div className="gradient-primary rounded-2xl p-4 text-primary-foreground">
@@ -576,7 +769,7 @@ const DebtGoalsPage = () => {
             </p>
           </div>
 
-          {/* ── Goals List ── */}
+          {/* Goals list */}
           {goals.map((g) => {
             const saved = Number(g.saved);
             const target = Number(g.target);
