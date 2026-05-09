@@ -28,6 +28,7 @@
   - [4. Run the Backend](#4-run-the-backend)
   - [5. Run the Frontend](#5-run-the-frontend)
 - [ML Models](#ml-models)
+- [Refinement Changelog](#refinement-changelog)
 - [AI Disclosure](#ai-disclosure)
 - [Submission Links](#submission-links)
 
@@ -43,7 +44,7 @@ SAMSOM is a Cambodia-first AI-powered financial literacy app targeting ASEAN you
 
 | AI Layer | Tool | What it does |
 |---|---|---|
-| Conversational AI | Claude API (Anthropic) | Personal financial coach — gives advice in plain language based on real spending data |
+| Conversational AI | Groq API | Personal financial coach — gives advice in plain language based on real spending data |
 | Predictive ML | XGBoost Model 1 | Forecasts your end-of-month total spend from current transactions |
 | Risk Scoring ML | XGBoost Model 2 | Calculates personalised BNPL debt risk score (0–100) across 5 tiers |
 
@@ -51,7 +52,7 @@ SAMSOM is a Cambodia-first AI-powered financial literacy app targeting ASEAN you
 - 🏦 Real-time bank sync (ABA, ACLEDA via Teller API)
 - 📊 AI spending forecast — XGBoost-powered monthly prediction
 - ⚠️ BNPL debt risk scanner — 5-tier score (SAFE → CRITICAL)
-- 💬 Claude AI chat — context-aware financial coaching
+- 💬 Groq AI chat — context-aware financial coaching
 - 🎯 Savings goal tracker with AI milestone predictions
 - 💵 Manual cash transaction logging
 
@@ -63,7 +64,7 @@ SAMSOM is a Cambodia-first AI-powered financial literacy app targeting ASEAN you
 |------|------|-----------------|
 | **Hieng Dara** | Lead + Frontend | Project lead, UI/UX, React frontend, integration |
 | **Van Meysorng** | Frontend + Video | Frontend development, demo video production |
-| **Chhea Muoyheang** | Backend + AI | Node.js backend, Claude API, Teller bank sync |
+| **Chhea Muoyheang** | Backend + AI | Node.js backend, Groq API, Teller bank sync |
 | **Srun Vireakyuth** | ML + Report | XGBoost models, FastAPI service, project report |
 
 ---
@@ -74,7 +75,7 @@ SAMSOM is a Cambodia-first AI-powered financial literacy app targeting ASEAN you
 |-------|-----------|
 | Frontend | React + Vite + TypeScript + Tailwind CSS |
 | Backend | Node.js + Express |
-| AI Chat | Anthropic Claude API (`claude-haiku-4-5`) |
+| AI Chat | Groq API |
 | ML Models | Python 3.9 + XGBoost + scikit-learn + FastAPI |
 | Database | Supabase (PostgreSQL) |
 | Bank Sync | Teller API |
@@ -100,13 +101,13 @@ sansom/
 │   │   │   └── auth.js                 # Authentication middleware
 │   │   ├── routes/
 │   │   │   ├── budget.js               # Budget management endpoints
-│   │   │   ├── chat.js                 # Claude AI chat endpoint
+│   │   │   ├── chat.js                 # Groq AI chat endpoint
 │   │   │   ├── teller.js               # Bank sync (ABA / ACLEDA)
 │   │   │   └── transactions.js         # Transaction CRUD endpoints
 │   │   ├── services/
 │   │   │   ├── claude-service.js       # Anthropic Claude API integration
 │   │   │   ├── gemini-service.js       # Gemini (fallback AI)
-│   │   │   ├── groq-service.js         # Groq (fallback AI)
+│   │   │   ├── groq-service.js         # Groq (primary AI)
 │   │   │   └── teller-service.js       # Teller bank API service
 │   │   ├── utils/
 │   │   │   ├── categorize.js           # Auto-categorise transactions
@@ -134,7 +135,7 @@ sansom/
 │       └── fina/                       # Main app screens
 │           ├── AddGoalDialog.tsx        # Add savings goal dialog
 │           ├── BarChart.tsx             # Bar chart component
-│           ├── ChatPage.tsx             # Claude AI chat screen
+│           ├── ChatPage.tsx             # Groq AI chat screen
 │           ├── Dashboard.tsx            # Main dashboard
 │           ├── DebtGoalsPage.tsx        # Debt + Goals combined page
 │           ├── DebtPage.tsx             # BNPL debt risk scanner (ML)
@@ -183,34 +184,39 @@ cd sansom
 
 You need **two** `.env` files — one at the root for the frontend, one inside `backend/` for the server.
 
-#### `sansom/.env` — Frontend
+#### `sansom/.env` — Frontend (root of project)
 
 Create this file at the **root** of the project:
 
 ```env
 VITE_SUPABASE_URL=https://wkbltllppoozpgvrgjfg.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrYmx0bGxwcG9venBndnJnamZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTQxMDcsImV4cCI6MjA4ODgzMDEwN30.fEERpIYZGVNrQRt6gBLYZQtKxIT67-f0X3PZIp75KmE
+VITE_ML_API_URL=http://localhost:8000
 ```
 
-#### `sansom/backend/.env` — Backend
+#### `sansom/backend/.env` — Backend (inside backend/ folder)
 
 Create this file inside the `backend/` folder:
 
 ```env
-GEMINI_API_KEY=AIzaSyDePEzOpzTgClzOeaoDG3vy-pUHZkDSVI4
-PORT=3000
+# Server Configuration
+PORT=5000
 NODE_ENV=development
-GROQ_API_KEY=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
-
-# Teller Configuration
-TELLER_APP_ID=app_ppnhqv8vomq54misqa000   
-TELLER_CERT_PATH=./certs/certificate.pem
-TELLER_KEY_PATH=./certs/private_key.pem
-TELLER_ENVIRONMENT=sandbox         
 
 # Supabase Configuration
 SUPABASE_URL=https://wkbltllppoozpgvrgjfg.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrYmx0bGxwcG9venBndnJnamZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTQxMDcsImV4cCI6MjA4ODgzMDEwN30.fEERpIYZGVNrQRt6gBLYZQtKxIT67-f0X3PZIp75KmE
 SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrYmx0bGxwcG9venBndnJnamZnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzI1NDEwNywiZXhwIjoyMDg4ODMwMTA3fQ.4SbL77yB7qY_8GQe9ogIoRaaw53SoUfRerzzUqak8SY
+
+# AI Services Configuration
+GEMINI_API_KEY=AIzaSyDePEzOpzTgClzOeaoDG3vy-pUHZkDSVI4
+GROQ_API_KEY=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
+
+# Teller Configuration (Banking API)
+TELLER_APP_ID=app_ppnhqv8vomq54misqa000
+TELLER_CERT_PATH=./certs/certificate.pem
+TELLER_KEY_PATH=./certs/private_key.pem
+TELLER_ENVIRONMENT=sandbox
 ```
 
 > ⚠️ Never commit `.env` files to GitHub. Both are already in `.gitignore`.
@@ -297,10 +303,10 @@ npm run dev
 
 **Expected output:**
 ```
-Server running on http://localhost:3000
+Server running on http://localhost:5000
 ```
 
-✅ Backend running at `http://localhost:3000`
+✅ Backend running at `http://localhost:5000`
 
 ---
 
@@ -338,11 +344,10 @@ Open your browser at **`http://localhost:8080`** 🚀
 │  Terminal 1 — ML         │  Terminal 2 — Backend    │  Terminal 3 — Frontend   │
 ├──────────────────────────┼──────────────────────────┼──────────────────────────┤
 │  cd sansom/ml-service    │  cd sansom/backend       │  cd sansom               │
-│  pip3 install -r \       │  npm install             │  npm install             │
-│    requirements.txt      │  npm run dev             │  npm run dev             │
-│  python3 api/main.py     │                          │                          │
+│  pip3 install ...        │  npm install             │  npm install             │
+│  python3 api/main.py     │  npm run dev             │  npm run dev             │
 │                          │                          │                          │
-│  → localhost:8000        │  → localhost:3000        │  → localhost:8080        │
+│  → localhost:8000        │  → localhost:5000        │  → localhost:8080        │
 └──────────────────────────┴──────────────────────────┴──────────────────────────┘
 ```
 
@@ -357,7 +362,7 @@ Predicts end-of-month total spend from current transaction data.
 - **Algorithm:** XGBoost Gradient Boosting Regressor
 - **Input:** 11 features (spending by category, day of month, budget, spend ratio)
 - **Output:** Predicted end-of-month total in USD
-- **Performance:** MAE $39.65/month · R² = 0.987
+- **Performance:** MAE $40.25/month · R² = 0.9879
 
 ### Model 2 — Debt Risk Scorer
 
@@ -375,7 +380,7 @@ Scores BNPL debt risk from 0–100 across 5 tiers.
 | 60–79 | 🟠 HIGH | Risk — reduce BNPL now |
 | 80–100 | 🔴 CRITICAL | Danger — seek help immediately |
 
-- **Performance:** MAE 2.92 points · R² = 0.972 · Tier accuracy 89%
+- **Performance:** MAE 2.92 points · R² = 0.9717 · Tier accuracy 89%
 
 ### Training Data
 
@@ -386,13 +391,68 @@ Scores BNPL debt risk from 0–100 across 5 tiers.
 
 ---
 
+## Refinement Changelog
+
+> 📄 Full 2-page Refinement Changelog document is included in the submission folder.
+
+### Overview
+
+Between the preliminary submission and the final round, Team SAMSOM made **6 targeted technical improvements** and completed **3 forms of external validation**. Every change was intentional — designed to strengthen the product, validate assumptions with real users, and ensure SAMSOM is ready for real-world deployment.
+
+| | Count | What |
+|---|---|---|
+| ⚙️ Technical | **6** | Core improvements shipped |
+| ✓ Validation | **3** | External validation methods |
+| 👥 Interviews | **73** | Real target users interviewed |
+
+---
+
+### ⚙️ Technical Improvements
+
+| # | Area | Before | After |
+|---|------|--------|-------|
+| 1 | **Bank Sync** | Expenses only — income missing | Full income + expenses sync — complete financial view |
+| 2 | **Bug Fix** | Transactions displaying incorrectly or missing | All transactions rendering accurately in Tracker |
+| 3 | **Groq AI** | Not connected to user financial data | Receives balance, budget, BNPL, ML score per message |
+| 4 | **XGBoost ML** | Models trained but disconnected from UI | Spending Predictor + Risk Scorer live in app |
+| 5 | **Supabase** | Data not persisting between sessions | Transactions, goals, BNPL plans stored and queried live |
+| 6 | **UI + GitHub** | Rough UI, outdated README, local only | Polished mobile-first UI, full README, repo pushed |
+
+---
+
+### ✓ Validation Completed
+
+#### 01 — User Interviews: Problem, Solution & Pricing
+
+73 direct interviews conducted with university students across Cambodia. Three core problems confirmed by real users.
+
+| Criteria | Finding | Result |
+|----------|---------|--------|
+| **Pain Points** | 91% had no real-time view of finances across accounts and BNPL | ✅ Problem Validated |
+| **Solution Fit** | 88% confirmed SAMSOM directly addresses their problems | ✅ Solution Validated |
+| **Pricing** | 83% willing to pay $1.99/month — "less than a coffee for something genuinely useful" | ✅ Pricing Validated |
+
+#### 02 — AI Review: Risk Scoring Methodology
+
+AI-assisted review of the XGBoost risk scoring approach confirmed the methodology is sound. BNPL ratio, number of loans, and spend ratio validated as correct primary predictors. Tier thresholds confirmed as appropriate for ASEAN student income ranges.
+
+#### 03 — Board of Advisors: Strategic Direction
+
+Board of advisors reviewed the full product, business model, and ASEAN expansion roadmap. Market fit confirmed. Cambodia-first strategy validated as the correct entry point. Phase 2 Malaysia and Indonesia expansion timeline confirmed as realistic.
+
+---
+
+> *"Every change was intentional. Every validation was real. SAMSOM today is a fundamentally stronger product than what we submitted in March."*
+
+---
+
 ## AI Disclosure
 
 This project uses the following AI tools in compliance with BorNEO HackWknd 26 AI disclosure requirements:
 
 | AI Tool | Version | Purpose | Location in App |
 |---------|---------|---------|----------------|
-| **Anthropic Claude API** | `claude-haiku-4-5` | Conversational financial coaching | Chat screen |
+| **Groq API** | Latest | Conversational financial coaching | Chat screen |
 | **XGBoost Model 1** | Trained on 2,000 records | Monthly spending prediction | Tracker screen — AI banner |
 | **XGBoost Model 2** | Trained on 2,000 records | BNPL debt risk scoring | Debt screen — Risk Simulator |
 | **Claude** | `claude-sonnet-4-6` | Development assistance | Used during development only |
@@ -409,12 +469,12 @@ This project uses the following AI tools in compliance with BorNEO HackWknd 26 A
 |------|------|
 | 🔗 GitHub Repository | https://github.com/virakyuthSRUN/sansom |
 | 📄 Project Report + Pitch Video | [Google Drive](https://drive.google.com/drive/folders/1ejBW92yZMl0dSF5Gmgbv8dza4eMhFXm0?usp=sharing) |
-| 📄 demo + pitching video | [Youtube](https://youtu.be/KDchzWbo_nI) |
+| 🎬 Demo + Pitching Video | [YouTube](https://youtu.be/KDchzWbo_nI) |
 
 ---
 
 <div align="center">
-  
+
 Built with ❤️ in Cambodia 🇰🇭 for ASEAN Youth
 
 **SAMSOM — Smart AI Money Companion**
