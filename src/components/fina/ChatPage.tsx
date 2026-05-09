@@ -196,7 +196,7 @@ const ChatPage = () => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [userId] = useState(() => getOrCreateChatUserId());
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // Get complete financial data from tracker
   const getCompleteFinancialData = (): CompleteFinancialData => {

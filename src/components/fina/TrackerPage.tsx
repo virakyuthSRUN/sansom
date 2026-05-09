@@ -87,7 +87,7 @@ const CAT_ICONS: Record<Category, { icon: string; color: string }> = {
   Other: { icon: "Wallet", color: "#6b7280" },
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const USER_ID = getOrCreateTrackerUserId();
 
 // ============================================================================

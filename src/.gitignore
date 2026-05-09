@@ -11,18 +11,3 @@
 
 # Dependencies
 node_modules/
-
-# Build outputs
-dist/
-dist-ssr/
-*.local
-
-# Logs
-logs/
-*.log
-
-# Debug files
-*.swp
-*.swo
-*~
-.DS_Store
